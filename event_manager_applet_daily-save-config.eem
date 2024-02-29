@@ -1,0 +1,2 @@
+event manager applet daily-save-config
+ action 001 cli command "wr mem"

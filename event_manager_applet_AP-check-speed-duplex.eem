@@ -1,0 +1,26 @@
+event manager applet AP-check-speed-duplex
+ event neighbor-discovery interface regexp Ethernet cdp add
+ action 000           comment ### only check if attached device is an cisco AIR- AP model
+ action 000.050       regexp "cisco AIR-" "$_nd_cdp_platform"
+ action 000.050.010   if $_regexp_result eq "1" goto 010
+ action 000.055       regexp "Cisco AP Software" "$_nd_cdp_version"
+ action 000.055.010   if $_regexp_result eq "1" goto 010
+ action 000.100       comment ### if did not match on cdp aspects, then exit 0
+ action 000.100.100   exit 0
+ action 010           comment ### get the interface status
+ action 010.010       cli command "enable"
+ action 010.020       cli command "show interface status | inc $_nd_short_local_intf_name"
+ action 020           comment ### if is 1000-full, then just exit script
+ action 020.010       regexp "a-full a-1000" "$_cli_result"
+ action 020.010.010   if $_regexp_result eq "1"
+ action 020.010.010.1  exit 0
+ action 020.010.100   end
+ action 030           comment ### else is not 1000-full, then syslog
+ action 030.020.010   string range "$_cli_result" 56 62
+ action 030.020.011   string trim "$_string_result"
+ action 030.020.012   set _duplex "$_string_result"
+ action 030.020.015   string range "$_cli_result" 63 68
+ action 030.020.016   string trim "$_string_result"
+ action 030.020.017   set _speed "$_string_result"
+ action 030.090       comment ### send syslog message
+ action 030.091       syslog msg "$_nd_local_intf_name is not a-full/a-1000 instead $_duplex/$_speed for $_nd_cdp_entry_name $_nd_cdp_platform"

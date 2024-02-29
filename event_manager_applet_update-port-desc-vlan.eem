@@ -1,0 +1,38 @@
+event manager applet update-port-desc-vlan
+ event neighbor-discovery interface regexp Ethernet cdp add
+ action 001 cli command "enable"
+ action 002 cli command "show int $_nd_local_intf_name | inc Description:"
+ action 003 regexp "Description:[\s]*=" "$_cli_result"
+ action 004 if $_regexp_result eq "1"
+ action 005  exit 0
+ action 006 end
+ action 007 cli command "enable"
+ action 008 cli command "config t"
+ action 009 cli command "int $_nd_local_intf_name"
+ action 010 cli command "description _= $_nd_cdp_entry_name:$_nd_port_id"
+ action 011 regexp "-K9W8-" "$_nd_cdp_version"
+ action 012 if $_regexp_result eq "1"
+ action 013  cli command "do show cdp neighbors $_nd_local_intf_name detail | inc Device ID:"
+ action 014  regexp "Device ID:[\s]*FCAP-" "$_cli_result"
+ action 015  if $_regexp_result eq "1"
+ action 016   cli command "switchport"
+ action 017   cli command "switchport trunk encapsulation dot1q"
+ action 018   cli command "switchport trunk native vlan 203"
+ action 019   cli command "switchport trunk allowed vlan 1,201,203"
+ action 020   cli command "switchport mode trunk"
+ action 021   cli command "spanning-tree portfast trunk"
+ action 022   cli command "default switchport access vlan"
+ action 023  end
+ action 024  cli command "do show cdp neighbors $_nd_local_intf_name detail | inc Device ID:"
+ action 025  regexp "Device ID:[\s]*LMAP-" "$_cli_result"
+ action 026  if $_regexp_result eq "1"
+ action 027   cli command "switchport"
+ action 028   cli command "switchport access vlan 203"
+ action 029   cli command "switchport mode access"
+ action 030   cli command "spanning-tree portfast"
+ action 031   cli command "default switchport trunk encapsulation"
+ action 032   cli command "default switchport trunk allowed vlan"
+ action 033   cli command "default switchport trunk native vlan"
+ action 034  end
+ action 035 end
+ action 036 cli command "end"
