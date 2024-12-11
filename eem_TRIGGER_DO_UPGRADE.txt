@@ -12,10 +12,10 @@ event manager applet TRIGGER_UPGRADE authorization bypass
  action 000.000    syslog msg "Running ... "
  action 000.01     comment == decide if we want to destroy self and clean up automatically
  action 000.011    handle-error type ignore
- action 000.012    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.012.1  set _UPGRADE_FLAG_DESTROY "TRUE"
+ ! action 000.012.2  set _UPGRADE_FLAG_DESTROY "TRUE"
  action 000.013    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 000.014    syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
- ! action 000.015    set _UPGRADE_FLAG_DESTROY "FALSE"
  action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
