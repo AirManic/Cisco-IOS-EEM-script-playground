@@ -12,8 +12,9 @@ event manager applet TRIGGER_UPGRADE authorization bypass
  action 000.000    syslog msg "Running ... "
  action 000.01     comment == decide if we want to destroy self and clean up automatically
  action 000.011    handle-error type ignore
- action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
- action 000.015    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.012    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014    syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  ! action 000.015    set _UPGRADE_FLAG_DESTROY "FALSE"
  action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
@@ -33,7 +34,7 @@ event manager applet TRIGGER_UPGRADE authorization bypass
  action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.02.SPA.bin"
  ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.06.SPA.bin"
  ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.12.04.SPA.bin"
- ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
+ action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
  ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.15.02.SPA.bin"
  action 010.018    context save key _UPGRADE_FLAG_SOURCE variable "_UPGRADE_FLAG_SOURCE"
  action 010.02     comment == detect if the image passes ISSU compatibility, presume False
@@ -52,7 +53,9 @@ event manager applet DO_UPGRADE authorization bypass
  action 000.000    syslog msg "Running ... "
  action 000.01     comment == decide if we want to destroy self and clean up automatically
  action 000.011    handle-error type ignore
- action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.012    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014    syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
@@ -88,7 +91,9 @@ event manager applet DO_UPGRADE_ISSU_CHK authorization bypass
  action 000.000    syslog msg "Running ... "
  action 000.01     comment == decide if we want to destroy self and clean up automatically
  action 000.011    handle-error type ignore
- action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.012    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014    syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
@@ -116,7 +121,9 @@ event manager applet DO_UPGRADE_AP_PREDOWNLOAD authorization bypass
  action 000.000    syslog msg "Running ... "
  action 000.01     comment == decide if we want to destroy self and clean up automatically
  action 000.011    handle-error type ignore
- action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.012    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014    syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
@@ -149,7 +156,9 @@ event manager applet DO_UPGRADE_ACTIVATE authorization bypass
  action 000.000      syslog msg "Running ... "
  action 000.01       comment == decide if we want to destroy self and clean up automatically
  action 000.011      handle-error type ignore
- action 000.012      context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.012      set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013      context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014      syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  action 000.018      context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001          comment == CLI housekeeping
  action 001.010      cli command "enable"
@@ -185,7 +194,9 @@ event manager applet DO_UPGRADE_COMMIT_ISSU authorization bypass
  action 000.002    comment == if ISSU was enacted, also clear both DO_UPGRADE_COMMIT_ISSU and DO_UPGRADE_COMMIT_NON_ISSU
  action 000.01     comment == decide if we want to destroy self and clean up automatically
  action 000.011    handle-error type ignore
- action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.012    set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014    syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001.010    cli command "enable"
  action 001.020    cli command "term length 0"
@@ -223,7 +234,9 @@ event manager applet DO_UPGRADE_TIMED_CLEANUP authorization bypass
  action 000.000      syslog msg "Running ... "
  action 000.01       comment == decide if we want to destroy self and clean up automatically
  action 000.011      handle-error type ignore
- action 000.012      context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.012      set _UPGRADE_FLAG_DESTROY "TRUE"
+ action 000.013      context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.014      syslog "_UPGRADE_FLAG_DESTROY is $_UPGRADE_FLAG_DESTROY"
  action 001          comment == CLI housekeeping
  action 001.010      cli command "enable"
  action 001.020      cli command "term length 0"
