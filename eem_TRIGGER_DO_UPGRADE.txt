@@ -9,50 +9,66 @@ conf t
 no event manager applet TRIGGER_UPGRADE authorization bypass
 event manager applet TRIGGER_UPGRADE authorization bypass
  event none maxrun 30
+ action 000.000    syslog msg "Running ... "
+ action 000.01     comment == decide if we want to destroy self and clean up automatically
+ action 000.011    handle-error type ignore
+ action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.015    set _UPGRADE_FLAG_DESTROY "TRUE"
+ ! action 000.015    set _UPGRADE_FLAG_DESTROY "FALSE"
+ action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
  action 001.020    cli command "term length 0"
  action 002        comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010    syslog msg "Destroy self"
- action 002.020.01 cli command "config t"
- action 002.020.02 cli command " no event manager applet TRIGGER_UPGRADE"
- action 002.020.08 cli command "end"
- action 002.020.09 cli command "wr mem"
+ action 002.010.01 if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02  syslog msg "Destroy self"
+ action 002.020.01  cli command "config t"
+ action 002.020.02  cli command " no event manager applet TRIGGER_UPGRADE"
+ action 002.020.08  cli command "end"
+ action 002.020.09 end
+ action 002.020.10 cli command "wr mem"
  action 010        comment == save some variables
  action 010.0      handle-error type ignore
  action 010.01     comment == what image to upgrade
- ! action 010.015    set UPGRADE_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.02.SPA.bin"
- ! action 010.015    set UPGRADE_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.06.SPA.bin"
- ! action 010.015    set UPGRADE_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.12.04.SPA.bin"
- action 010.015    set UPGRADE_SOURCE "http://192.168.201.173/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
- ! action 010.015    set UPGRADE_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.15.02.SPA.bin"
- action 010.018    context save key UPGRADE_SOURCE variable "UPGRADE_SOURCE"
+ action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.02.SPA.bin"
+ ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.06.SPA.bin"
+ ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.12.04.SPA.bin"
+ ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
+ ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.15.02.SPA.bin"
+ action 010.018    context save key _UPGRADE_FLAG_SOURCE variable "_UPGRADE_FLAG_SOURCE"
  action 010.02     comment == detect if the image passes ISSU compatibility, presume False
- action 010.025    set UPGRADE_DO_ISSU "TRUE"
- action 010.027    syslog msg "UPGRADE_DO_ISSU is $UPGRADE_DO_ISSU"
- action 010.028    context save key UPGRADE_DO_ISSU variable "UPGRADE_DO_ISSU"
+ action 010.025    set _UPGRADE_FLAG_DO_ISSU "TRUE"
+ action 010.027    syslog msg "_UPGRADE_FLAG_DO_ISSU is $_UPGRADE_FLAG_DO_ISSU"
+ action 010.028    context save key _UPGRADE_FLAG_DO_ISSU variable "_UPGRADE_FLAG_DO_ISSU"
  action 070.015    comment == change counter value to trigger event
- action 070.015.01 counter name "DO_UPGRADE" op set value 0
- action 070.015.02 counter name "DO_UPGRADE" op set value 1
+ action 070.015.01 counter name "_UPGRADE_TRIGGER" op set value 0
+ action 070.015.02 counter name "_UPGRADE_TRIGGER" op set value 1
 !
 
 !
 no event manager applet DO_UPGRADE authorization bypass
 event manager applet DO_UPGRADE authorization bypass
- event counter name DO_UPGRADE entry-val 0 entry-op gt exit-val 1 exit-op lt maxrun 1800
+ event counter name _UPGRADE_TRIGGER entry-val 0 entry-op gt exit-val 1 exit-op lt maxrun 1800
+ action 000.000    syslog msg "Running ... "
+ action 000.01     comment == decide if we want to destroy self and clean up automatically
+ action 000.011    handle-error type ignore
+ action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
  action 001.020    cli command "term length 0"
  action 002        comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010    syslog msg "Destroy self"
- action 002.020.01 cli command "config t"
- action 002.020.02 cli command " no event manager applet DO_UPGRADE"
- action 002.020.08 cli command "end"
- action 002.020.09 cli command "wr mem"
+ action 002.010.01 if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02  syslog msg "Destroy self"
+ action 002.020.01  cli command "config t"
+ action 002.020.02  cli command " no event manager applet DO_UPGRADE"
+ action 002.020.08  cli command "end"
+ action 002.020.09 end
+ action 002.020.10 cli command "wr mem"
  action 010        comment == retrieve some variables
  action 010.0      handle-error type ignore
- action 010.010    set UPGRADE_SOURCE "TDB"
- action 010.019    context retrieve key UPGRADE_SOURCE variable "UPGRADE_SOURCE"
+ action 010.010    set _UPGRADE_FLAG_SOURCE "TDB"
+ action 010.019    context retrieve key _UPGRADE_FLAG_SOURCE variable "_UPGRADE_FLAG_SOURCE"
  action 020        comment == CLI housekeeping
  action 020.010    cli command "enable"
  action 020.020    cli command "term length 0"
@@ -62,67 +78,96 @@ event manager applet DO_UPGRADE authorization bypass
  action 070        comment == transfer image file and install add
  action 070.011.00 comment == need to do wr mem to ensure activate-commit is happy, else it will error out
  action 070.011.01 cli command "wr mem"
- action 070.012    cli command "install add file $UPGRADE_SOURCE"
+ action 070.012    cli command "install add file $_UPGRADE_FLAG_SOURCE"
 !
 
 !
-no event manager applet DO_UPGRADE_CHK_UPGRADE_DO_ISSU_FAILED authorization bypass
-event manager applet DO_UPGRADE_CHK_UPGRADE_DO_ISSU_FAILED authorization bypass
+no event manager applet DO_UPGRADE_ISSU_CHK authorization bypass
+event manager applet DO_UPGRADE_ISSU_CHK authorization bypass
  event syslog pattern "ISSU-3-ISSU_COMP_CHECK_FAILED" maxrun 30
+ action 000.000    syslog msg "Running ... "
+ action 000.01     comment == decide if we want to destroy self and clean up automatically
+ action 000.011    handle-error type ignore
+ action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
  action 001.020    cli command "term length 0"
  action 002        comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010    syslog msg "Destroy self"
- action 002.020.01 cli command "config t"
- action 002.020.02 cli command " no event manager applet DO_UPGRADE_CHK_UPGRADE_DO_ISSU_FAILED"
- action 002.020.08 cli command "end"
- action 002.020.09 cli command "wr mem"
+ action 002.010.01 if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02  syslog msg "Destroy self"
+ action 002.020.01  cli command "config t"
+ action 002.020.02  cli command " no event manager applet DO_UPGRADE_ISSU_CHK"
+ action 002.020.08  cli command "end"
+ action 002.020.09 end
+ action 002.020.10 cli command "wr mem"
  action 010        comment == save some variables
  action 010.0      handle-error type ignore
- action 010.015    context retrieve key UPGRADE_DO_ISSU variable "UPGRADE_DO_ISSU"
- action 010.020    set UPGRADE_DO_ISSU "FALSE"
- action 010.027    syslog msg "UPGRADE_DO_ISSU is $UPGRADE_DO_ISSU"
- action 010.029    context save key UPGRADE_DO_ISSU variable "UPGRADE_DO_ISSU"
+ action 010.015    context retrieve key _UPGRADE_FLAG_DO_ISSU variable "_UPGRADE_FLAG_DO_ISSU"
+ action 010.020    set _UPGRADE_FLAG_DO_ISSU "FALSE"
+ action 010.027    syslog msg "_UPGRADE_FLAG_DO_ISSU is $_UPGRADE_FLAG_DO_ISSU"
+ action 010.029    context save key _UPGRADE_FLAG_DO_ISSU variable "_UPGRADE_FLAG_DO_ISSU"
 !
 
 !
 no event manager applet DO_UPGRADE_AP_PREDOWNLOAD authorization bypass
 event manager applet DO_UPGRADE_AP_PREDOWNLOAD authorization bypass
- event syslog pattern "INSTALL-5-INSTALL_COMPLETED_INFO.* Completed install add" maxrun 3600
+ event syslog pattern "INSTALL-5-INSTALL_COMPLETED_INFO:.*Completed install add" maxrun 3600
+ action 000.000    syslog msg "Running ... "
+ action 000.01     comment == decide if we want to destroy self and clean up automatically
+ action 000.011    handle-error type ignore
+ action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
  action 001.020    cli command "term length 0"
  action 002        comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010    syslog msg "Destroy self"
- action 002.020.01 cli command "config t"
- action 002.020.02 cli command " no event manager applet DO_UPGRADE_AP_PREDOWNLOAD"
- action 002.020.03 cli command " no event manager applet DO_UPGRADE_CHK_UPGRADE_DO_ISSU_FAILED"
- action 002.020.08 cli command "end"
- action 002.020.09 cli command "wr mem"
+ action 002.010.01 if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02  syslog msg "Destroy self"
+ action 002.020.01  cli command "config t"
+ action 002.020.02  cli command " no event manager applet DO_UPGRADE_AP_PREDOWNLOAD"
+ action 002.020.03  cli command " no event manager applet DO_UPGRADE_ISSU_CHK"
+ action 002.020.08  cli command "end"
+ action 002.020.09 end
+ action 002.020.10 cli command "wr mem"
  action 070        comment == ap image predownload
  action 070.010    cli command "ap image predownload"
-!
+ action 080.000.01 comment if one or more AP-s need predownload, the next step of DO_UPGRADE_ACTIVATE will fire from syslog message
+ action 080.000.02 comment whereas if no AP-s need predownload, then no syslog will occur .. thus, set a countdown timer
+ action 080.000.03 comment secondary way to move one... aka, wait longer than the predownload should take and fire
+ action 080.000.04 comment to force moving on.
+ action 080.010.01 wait 1800
+ ! TODO: testing
+ ! action 080.010.01 wait 60
+ action 080.020    comment == proxy call DO_UPGRADE_ACTIVATE by tricking it into thinking the AP Predownload ran
+ action 080.021    syslog msg "proxy message UPGRADE-5-AP_SW_UPDATE_LOG_MSG: Predownload is successful"
 
 !
 no event manager applet DO_UPGRADE_ACTIVATE authorization bypass
 event manager applet DO_UPGRADE_ACTIVATE authorization bypass
- event syslog pattern "UPGRADE-5-AP_SW_UPDATE_LOG_MSG.* AP SW update Predownload is successful" maxrun 1800
+ event syslog pattern "UPGRADE-5-AP_SW_UPDATE_LOG_MSG:.* Predownload is successful" maxrun 1800
+ action 000.000      syslog msg "Running ... "
+ action 000.01       comment == decide if we want to destroy self and clean up automatically
+ action 000.011      handle-error type ignore
+ action 000.012      context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.018      context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001          comment == CLI housekeeping
  action 001.010      cli command "enable"
  action 001.020      cli command "term length 0"
  action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010      syslog msg "Destroy self"
- action 002.020.01   cli command "config t"
- action 002.020.02   cli command " no event manager applet DO_UPGRADE_ACTIVATE"
- action 002.020.08   cli command "end"
- action 002.020.09   cli command "wr mem"
+ action 002.010.01   if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02    syslog msg "Destroy self"
+ action 002.020.01    cli command "config t"
+ action 002.020.02    cli command " no event manager applet DO_UPGRADE_ACTIVATE"
+ action 002.020.08    cli command "end"
+ action 002.020.09   end
+ action 002.020.10   cli command "wr mem"
  action 010          comment == retrieve some variables
  action 010.0        handle-error type ignore
- action 010.015      context retrieve key UPGRADE_DO_ISSU variable "UPGRADE_DO_ISSU"
- action 010.027      syslog msg "UPGRADE_DO_ISSU is $UPGRADE_DO_ISSU"
+ action 010.015      context retrieve key _UPGRADE_FLAG_DO_ISSU variable "_UPGRADE_FLAG_DO_ISSU"
+ action 010.027      syslog msg "_UPGRADE_FLAG_DO_ISSU is $_UPGRADE_FLAG_DO_ISSU"
  action 070          comment == install activate
- action 070.010      if $UPGRADE_DO_ISSU eq "TRUE"
+ action 070.010      if $_UPGRADE_FLAG_DO_ISSU ne "FALSE"
  action 070.010.15    cli command "install activate issu"
  action 070.020      else
  action 070.020.25    cli command "install activate" pattern "y\/n"
@@ -134,23 +179,71 @@ event manager applet DO_UPGRADE_ACTIVATE authorization bypass
 !
 no event manager applet DO_UPGRADE_COMMIT_ISSU authorization bypass
 event manager applet DO_UPGRADE_COMMIT_ISSU authorization bypass
- event syslog pattern "UPGRADE-6-STAGGERED_UPGRADE_COMPLETE.* Staggered AP Upgrade completed succesfully" maxrun 1800
- action 001        comment == CLI housekeeping
+ event syslog pattern "UPGRADE-6-STAGGERED_UPGRADE_COMPLETE" maxrun 900
+ action 000.000    syslog msg "Running ... "
+ action 000.001    comment == if ISSU was enacted, this will trigger to complete the sequence
+ action 000.002    comment == if ISSU was enacted, also clear both DO_UPGRADE_COMMIT_ISSU and DO_UPGRADE_COMMIT_NON_ISSU
+ action 000.01     comment == decide if we want to destroy self and clean up automatically
+ action 000.011    handle-error type ignore
+ action 000.012    context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 000.018    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
  action 001.010    cli command "enable"
  action 001.020    cli command "term length 0"
  action 002        comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010    syslog msg "Destroy self"
- action 002.020.01 cli command "config t"
- action 002.020.02 cli command " no event manager applet DO_UPGRADE_COMMIT_ISSU"
- action 002.020.08 cli command "end"
- action 002.020.09 cli command "wr mem"
- action 070        comment == install  commit
+ action 002.010.01 if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02  syslog msg "Destroy self"
+ action 002.020.01  cli command "config t"
+ action 002.020.02  cli command " no event manager applet DO_UPGRADE_COMMIT_ISSU"
+ action 002.020.03  cli command " no event manager applet DO_UPGRADE_COMMIT_NON_ISSU"
+ action 002.020.08  cli command "end"
+ action 002.020.09 end
+ action 002.020.10 cli command "wr mem"
+ action 070        comment == install commit
  action 070.010    cli command "install commit"
 !
 
 !
-! TODO: event manager applet DO_UPGRADE_COMMIT_NONE_ISSU
-!  basically build this to replace DO_UPGRADE_COMMIT_ISSU and trigger on next reboot once
+no event manager applet DO_UPGRADE_COMMIT_NON_ISSU authorization bypass
+event manager applet DO_UPGRADE_COMMIT_NON_ISSU authorization bypass
+ event syslog pattern "SYS-5-RESTART: System restarted" maxrun 900
+ action 000.000    syslog msg "Running ... "
+ action 001.010    cli command "enable"
+ action 001.020    cli command "term length 0"
+ action 060        wait 600
+ ! TODO: testing
+ action 060        wait 60
+ action 070        comment == proxy call DO_UPGRADE_COMMIT_ISSU by tricking it into thinking the AP staggered reload ran
+ action 070.010    syslog msg "proxy message UPGRADE-6-STAGGERED_UPGRADE_COMPLETE"
+!
+
+!
+no event manager applet DO_UPGRADE_TIMED_CLEANUP authorization bypass
+event manager applet DO_UPGRADE_TIMED_CLEANUP authorization bypass
+ event timer countdown name DO_UPGRADE_TIMED_CLEANUP time 7200 maxrun 30
+ action 000.000      syslog msg "Running ... "
+ action 000.01       comment == decide if we want to destroy self and clean up automatically
+ action 000.011      handle-error type ignore
+ action 000.012      context retrieve key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 001          comment == CLI housekeeping
+ action 001.010      cli command "enable"
+ action 001.020      cli command "term length 0"
+ action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
+ action 002.010.01   if $_UPGRADE_FLAG_DESTROY ne "FALSE"
+ action 002.010.02    syslog msg "Destroy self"
+ action 002.020.01    cli command "config t"
+ action 002.020.11    cli command " no event manager applet TRIGGER_UPGRADE"
+ action 002.020.12    cli command " no event manager applet DO_UPGRADE"
+ action 002.020.13    cli command " no event manager applet DO_UPGRADE_ISSU_CHK"
+ action 002.020.14    cli command " no event manager applet DO_UPGRADE_AP_PREDOWNLOAD"
+ action 002.020.15    cli command " no event manager applet DO_UPGRADE_ACTIVATE"
+ action 002.020.16    cli command " no event manager applet DO_UPGRADE_COMMIT_ISSU"
+ action 002.020.17    cli command " no event manager applet DO_UPGRADE_COMMIT_NON_ISSU"
+ action 002.020.18    cli command " no event manager applet DO_UPGRADE_TIMED_CLEANUP"
+ action 002.020.91    cli command "end"
+ action 002.025      else
+ action 002.025.011    context save key _UPGRADE_FLAG_DESTROY variable "_UPGRADE_FLAG_DESTROY"
+ action 002.029      end
+ action 002.090      cli command "wr mem"
 !
 
 !
