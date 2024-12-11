@@ -33,7 +33,7 @@ event manager applet TRIGGER_UPGRADE authorization bypass
  action 010.01     comment == what image to upgrade
  action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.02.SPA.bin"
  ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.06.SPA.bin"
- action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.12.04.SPA.bin"
+ ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.12.04.SPA.bin"
  ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
  ! action 010.015    set _UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.15.02.SPA.bin"
  action 010.018    context save key _UPGRADE_FLAG_SOURCE variable "_UPGRADE_FLAG_SOURCE"
