@@ -1,0 +1,17 @@
+event manager applet Client_Debug_Rotate
+ event none maxrun 600
+ action 000.010 cli command "enable"
+ action 001.000 comment Load up DUTs [Device Under Study] with MAC addresses
+ action 001.001 set DUTs "aaaa.aaaa.aaaa bbbb.bbbb.bbbb cccc.cccc.cccc"
+ action 100.010 foreach DUT "$DUTs"
+ action 100.015  syslog msg "eem Client_Debug_Rotate processing $DUT"
+ action 100.020  cli command "event manager run Mandatory.ra_tracing_tool.tcl stop MAC $DUT"
+ action 100.025  syslog msg "eem Client_Debug_Rotate processing $DUT stop and log"
+ action 100.030  cli command "debug platform condition feature wireless mac $DUT"
+ action 100.035  syslog msg "eem Client_Debug_Rotate processing $DUT start"
+ action 100.999 end
+ action 200.010 cli command "debug platform condition start"
+event manager applet Client_Debug_Rotate_cron
+ event timer cron name Client_Debug_Rotate_cron cron-entry "*/5 23 * * *"
+ action 000 cli command "enable"
+ action 010 cli command "event manager run Client_Debug_Rotate"
