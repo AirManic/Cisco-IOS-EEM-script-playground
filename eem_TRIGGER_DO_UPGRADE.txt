@@ -1,6 +1,9 @@
 
 != REFERENCE ==========================================================================================================
 !
+!
+! https://docs.yosemite.iosxe.net/setup/
+!
 ! https://www.cisco.com/c/en/us/support/docs/ios-nx-os-software/ios-xe-16/216091-best-practices-and-useful-scripts-for-ee.html
 ! https://www.cisco.com/c/en/us/support/docs/wireless/catalyst-9800-series-wireless-controllers/222405-upgrade-catalyst-9800-wlc-ha-sso-using-i.html
  ac
