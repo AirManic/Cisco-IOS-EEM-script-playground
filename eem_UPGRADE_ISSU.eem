@@ -149,7 +149,7 @@ event manager applet UPGRADE_ACTIVATE_DO authorization bypass
  action 002.020.90   end
  action 002.020.99   cli command "wr mem"
  action 070          comment == install activate
- action 070.010.01   counter name "sh " op nop
+ action 070.010.01   counter name "UPGRADE_FLAG_ISSU_CHK" op nop
  action 070.010.02   set UPGRADE_FLAG_ISSU_CHK $_counter_value_remain
  action 070.010.03   syslog msg "UPGRADE_FLAG_ISSU_CHK is $UPGRADE_FLAG_ISSU_CHK"
  action 070.010.03   if $UPGRADE_FLAG_ISSU_CHK eq 1
