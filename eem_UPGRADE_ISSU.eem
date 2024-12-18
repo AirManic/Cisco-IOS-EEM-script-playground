@@ -2,14 +2,13 @@
 != DO THIS UPFRONT ====================================================================================================
 !
 ! comment == set this first .. to set what image to upgrade
- event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.02.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.04.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.04a.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.06.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.09.06.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.12.04.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/C9800-CL-universalk9.17.15.02.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.02/C9800-CL-universalk9.17.09.02.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
+event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.04a/C9800-CL-universalk9.17.09.04a.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.06/C9800-CL-universalk9.17.09.06.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.12.04/C9800-CL-universalk9.17.12.04.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.12.04ESW13/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.15.02/C9800-CL-universalk9.17.15.02.SPA.bin"
 !
 !
 !
