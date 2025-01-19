@@ -1,17 +1,24 @@
 !
 != DO THIS UPFRONT ====================================================================================================
 !
+ap upgrade method https
+ap upgrade staggered 25
+!
+
+!
+event manager session cli username "EEM_USER" privilege 15
+!
+
 ! comment == set this first .. to set what image to upgrade
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.02/C9800-CL-universalk9.17.09.02.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.04a/C9800-CL-universalk9.17.09.04a.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.09.06/C9800-CL-universalk9.17.09.06.SPA.bin"
-event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.12.03/C9800-CL-universalk9.17.02.03.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.12.04/C9800-CL-universalk9.17.12.04.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.12.04ESW13/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.173/ztp/images/IOS-XE-17.15.02/C9800-CL-universalk9.17.15.02.SPA.bin"
-!
-!
+ event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.09.02/C9800-CL-universalk9.17.09.02.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.09.04a/C9800-CL-universalk9.17.09.04a.SPA.bin"
+!_event manager environment UPGRADE_FLAG_SOURCE "tftp://192.168.201.191/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.09.06/C9800-CL-universalk9.17.09.06.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.12.03/C9800-CL-universalk9.17.12.03.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.12.04/C9800-CL-universalk9.17.12.04.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.12.04ESW13/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.191/ztp/images/IOS-XE-17.15.02/C9800-CL-universalk9.17.15.02.SPA.bin"
 !
 
 !
@@ -45,188 +52,331 @@ event manager environment UPGRADE_FLAG_DESTROY 1
 !
 
 !
-no event manager applet UPGRADE_TRIGGER authorization bypass
-event manager applet UPGRADE_TRIGGER authorization bypass
- event tag CNT counter name UPGRADE_FLAG_ISSU_CHK entry-val 1000 entry-op eq exit-val 1000 exit-op ne
- event tag NONE none maxrun 30
+no event manager applet UPGRADE_FLAG_DECLARE authorization bypass
+   event manager applet UPGRADE_FLAG_DECLARE authorization bypass
+ event tag UPGRADE_FLAG_ISSU_CHK counter name UPGRADE_FLAG_ISSU_CHK entry-val 1000 entry-op eq exit-val 1001 exit-op eq
  trigger
-  correlate event NONE or event CNT
+  correlate event UPGRADE_FLAG_ISSU_CHK
  action 000.000    syslog msg "Running ... "
- action 070.010    comment == set flag to presume ISSU type upgrade
- action 070.010.00 counter name "UPGRADE_FLAG_ISSU_CHK" op set value 1
- action 070.012    policy UPGRADE_DO
 !
 
 !
 no event manager applet UPGRADE_DO authorization bypass
-event manager applet UPGRADE_DO authorization bypass
-event none maxrun 1800
- action 000.000    syslog msg "Running now ... "
- action 000.001    wait 10
+   event manager applet UPGRADE_DO authorization bypass
+ event tag NONE none maxrun 7200
+ trigger
+  correlate event NONE
+ action 000.000    syslog msg "Running ... "
  action 001        comment == CLI housekeeping
- action 001.020.01  cli command "enable"
- action 001.020.02  cli command "term length 0"
+ action 001.010    cli command "enable"
+ action 001.015    cli command "term exec prompt timestamp"
+ action 001.020    cli command "term length 0"
  action 002        comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
  action 002.010.01 if $UPGRADE_FLAG_DESTROY eq 1
  action 002.010.02   syslog msg "Destroy self"
  action 002.020.01   cli command "config t"
- action 002.020.11   cli command " no event manager applet UPGRADE_TRIGGER"
  action 002.020.12.7 cli command " no event manager applet UPGRADE_DO"
- action 002.020.91   cli command "end"
- action 002.029    end
+ action 002.020.80    cli command "end"
+ action 002.020.90  end
+ action 002.020.99  cli command "wr mem"
  action 040        comment == install remove inactive
  action 040.010    cli command "install remove inactive" pattern "y\/n|Nothing to clean"
  action 040.020    cli command "y"
- action 070        comment == transfer image file and install add
- action 070.011.00 comment == need to do wr mem to ensure activate-commit is happy, else it will error out
- action 070.011.01 cli command "wr mem"
- action 070.012    cli command "install add file $UPGRADE_FLAG_SOURCE"
+ action 070.010    comment == set flag
+ action 070.010.025.0 comment == check issu state detail to see if in progress
+ action 070.010.025.1 cli command "show redundancy"
+ action 070.010.025.2 regexp "Operating Redundancy Mode = (sso)" "$_cli_result" match match1
+ action 070.010.025.3 if $_regexp_result eq "1"
+ action 070.010.025.4     counter name "UPGRADE_FLAG_ISSU_CHK" op set value 1
+ action 070.010.025.5     syslog msg "HA=SSO is operating, setting UPGRADE_FLAG_ISSU_CHK to $_counter_value_remain"
+ action 070.010.025.6 else
+ action 070.010.025.7     counter name "UPGRADE_FLAG_ISSU_CHK" op set value 0
+ action 070.010.025.8     syslog msg "HA=SSO is NOT operating, setting UPGRADE_FLAG_ISSU_CHK to $_counter_value_remain"
+ action 070.010.025.9 end
+ action 070.015    comment == transfer image file and install add
+ action 070.015.00 comment == need to do wr mem to ensure activate-commit is happy, else it will error out
+ action 070.015.99 cli command "wr mem"
+ action 070.017    cli command "install add file $UPGRADE_FLAG_SOURCE"
+!
+
+! 000367: Jan  8 18:55:42.135 cst: %INSTALL-3-OPERATION_ERROR_MESSAGE: Chassis 1 R0/0: install_mgr: Failed to install activate package , Error: No error or error string
+
+!
+no event manager applet UPGRADE_INSTALL_FAILED authorization bypass
+   event manager applet UPGRADE_INSTALL_FAILED authorization bypass
+ event tag NONE none maxrun 900
+ event tag SYS_INSTALL_FAILED syslog pattern "INSTALL-3-OPERATION_ERROR_MESSAGE.*Failed to (install|install active) add package"
+ trigger
+  correlate event NONE or event SYS_INSTALL_FAILED
+ action 001        comment == CLI housekeeping
+ action 001.010    cli command "enable"
+ action 001.015    cli command "term exec prompt timestamp"
+ action 001.020    cli command "term length 0"
+ action 070.010.03 syslog msg "Calling UPGRADE_CLEANUP_DO"
+ action 070.010.04        policy UPGRADE_CLEANUP_DO
 !
 
 !
 no event manager applet UPGRADE_ISSU_CHK_FAILED authorization bypass
-event manager applet UPGRADE_ISSU_CHK_FAILED authorization bypass
- event syslog pattern "ISSU-3-ISSU_COMP_CHECK_FAILED" maxrun 30
- action 000.000    syslog msg "Running ... "
- action 070.015.02 counter name "UPGRADE_FLAG_ISSU_CHK" op set value -1
-!
-
-!
-no event manager applet UPGRADE_AP_PREDOWNLOAD_SYS authorization bypass
-event manager applet UPGRADE_AP_PREDOWNLOAD_SYS authorization bypass
- event syslog pattern "INSTALL-5-INSTALL_COMPLETED_INFO:.*Completed install add" maxrun 3600
- action 070.012    policy UPGRADE_AP_PREDOWNLOAD_DO
+   event manager applet UPGRADE_ISSU_CHK_FAILED authorization bypass
+ event tag NONE none maxrun 180
+ event tag SYS_ISSU_COMP_CHECK_FAILED syslog pattern "ISSU-3-ISSU_COMP_CHECK_FAILED"
+ trigger
+  correlate event NONE or event SYS_ISSU_COMP_CHECK_FAILED
+ action 070.010.00 counter name "UPGRADE_FLAG_ISSU_CHK" op set value 0
+ action 070.010.03 syslog msg "UPGRADE_FLAG_ISSU_CHK is $_counter_value_remain"
 !
 
 !
 no event manager applet UPGRADE_AP_PREDOWNLOAD_DO authorization bypass
-event manager applet UPGRADE_AP_PREDOWNLOAD_DO authorization bypass
- event none maxrun 3600
- action 000.000      syslog msg "Running ... "
- action 001          comment == CLI housekeeping
- action 001.010      cli command "enable"
- action 001.020      cli command "term length 0"
- action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
- action 002.010.01   if $UPGRADE_FLAG_DESTROY eq 1
- action 002.010.02    syslog msg "Destroy self"
- action 002.020.01    cli command "config t"
- action 002.020.14.1  cli command " no event manager applet UPGRADE_AP_PREDOWNLOAD_SYS"
- action 002.020.14.7  cli command " no event manager applet UPGRADE_AP_PREDOWNLOAD_DO"
- action 002.020.80    cli command "end"
- action 002.020.90   end
- action 002.020.99   cli command "wr mem"
- action 070          comment == ap image predownload
- action 070.010      cli command "ap image predownload"
-!
-
-!
-no event manager applet UPGRADE_ACTIVATE_SYS authorization bypass
-event manager applet UPGRADE_ACTIVATE_SYS authorization bypass
- event syslog pattern "UPGRADE-5-AP_SW_UPDATE_LOG_MSG:.* Predownload is successful" maxrun 1800
- action 070.012    policy UPGRADE_ACTIVATE_DO
+   event manager applet UPGRADE_AP_PREDOWNLOAD_DO authorization bypass
+ event tag NONE none maxrun 3600
+ event tag SYS_INSTALL_COMPLETED_INFO syslog pattern "INSTALL-5-INSTALL_COMPLETED_INFO:.*Completed install add"
+ trigger
+  correlate event NONE or event SYS_INSTALL_COMPLETED_INFO
+ action 000.000       syslog msg "Running ... "
+ action 001           comment == CLI housekeeping
+ action 001.010       cli command "enable"
+ action 001.015       cli command "term exec prompt timestamp"
+ action 001.020       cli command "term length 0"
+ action 002           comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
+ action 002.010.01    if $UPGRADE_FLAG_DESTROY eq "1"
+ action 002.010.02     syslog msg "Destroy self"
+ action 002.020.01     cli command "config t"
+ action 002.020.14.7   cli command " no event manager applet UPGRADE_AP_PREDOWNLOAD_DO"
+ action 002.020.80     cli command "end"
+ action 002.020.90    end
+ action 002.020.99    cli command "wr mem"
+ action 070           comment == ap image predownload phase .. first check a few things
+ action 070.148.025.0 comment == check if there is an install summary image "I" state
+ action 070.148.025.1 cli command "sho install summary | inc IMG"
+ action 070.148.025.2 regexp "IMG[\s]+(I)[\s]" "$_cli_result" match match1
+ action 070.148.026.1 if $_regexp_result ne "1"
+ action 070.148.026.6  syslog msg "IMG I missing .. just run UPGRADE_CLEANUP_DO"
+ action 070.148.026.7  policy UPGRADE_CLEANUP_DO
+ action 070.148.026.8  exit
+ action 070.148.026.9 end
+ action 070.200       comment == if there are no AP-s, move straight to activate phase
+ action 070.210       cli command "show ap image"
+ action 070.220       regexp "Total number of APs  : ([0-9]+)" "$_cli_result" match match1
+ action 070.230       if $_regexp_result eq "1"
+ action 070.240.010     if $match1 eq "0"
+ action 070.240.015      syslog msg "Predownload not needed .. per no AP-s doing: UPGRADE_ACTIVATE_DO"
+ action 070.240.017      policy UPGRADE_ACTIVATE_DO
+ action 070.240.018      exit
+ action 070.240.019     end
+ action 070.240.999    end
+ action 070.248        syslog msg "doing: ap image predownload "
+ action 070.248.010    cli command "ap image predownload"
+ ! TODO: loop for 90 sec .. and check every 5 sec for predownload to kick in
+ action 070.250.0   comment == wait 90 sec to let predownload have time to start
+ action 070.250.010 set PREDOWNLOAD_DETECT "0"
+ action 070.250.011 set loop 36
+ action 070.250.020 while $loop gt 0
+ action 070.250.030.00 comment == check to see if predownload actually is running
+ action 070.250.030.01 syslog msg "Predownload loop number $loop"
+ action 070.250.030.02   wait 5
+ action 070.250.030.1  cli command "show ap image | inc Predownload in progress"
+ action 070.250.030.2  regexp "Predownload in progress[\s]+: (Yes)" "$_cli_result" match match1
+ action 070.250.030.4  if $_regexp_result eq "1"
+ action 070.250.030.5   syslog msg "Predownload detected $loop"
+ action 070.250.030.6   set PREDOWNLOAD_DETECT "1"
+ action 070.250.030.7   set loop 1
+ action 070.250.030.8  end
+ action 070.250.060    decrement loop 1
+ action 070.250.070  end
+ action 070.250.080.010  if $PREDOWNLOAD_DETECT ne "1"
+ action 070.250.080.020   syslog msg "Predownload not detected .. doing: UPGRADE_ACTIVATE_DO"
+ action 070.250.080.030   policy UPGRADE_ACTIVATE_DO
+ action 070.250.080.040 end
 !
 
 !
 no event manager applet UPGRADE_ACTIVATE_DO authorization bypass
-event manager applet UPGRADE_ACTIVATE_DO authorization bypass
- event none maxrun 3600
+   event manager applet UPGRADE_ACTIVATE_DO authorization bypass
+ event tag NONE none maxrun 3600
+ event tag SYS_AP_SW_UPDATE_LOG_MSG syslog pattern "UPGRADE-5-AP_SW_UPDATE_LOG_MSG:.* Predownload is successful"
+ trigger
+  correlate event NONE or event SYS_AP_SW_UPDATE_LOG_MSG
  action 000.000      syslog msg "Running ... "
  action 001          comment == CLI housekeeping
  action 001.010      cli command "enable"
+ action 001.015      cli command "term exec prompt timestamp"
  action 001.020      cli command "term length 0"
  action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
  action 002.010.01   if $UPGRADE_FLAG_DESTROY eq 1
  action 002.010.02    syslog msg "Destroy self"
  action 002.020.01    cli command "config t"
- action 002.020.13    cli command " no event manager applet UPGRADE_ISSU_CHK_FAILED"
- action 002.020.15.1  cli command " no event manager applet UPGRADE_ACTIVATE_SYS"
+ action 002.020.13.1  cli command " no event manager applet UPGRADE_INSTALL_FAILED"
+ action 002.020.13.2  cli command " no event manager applet UPGRADE_ISSU_CHK_FAILED"
+ action 002.020.14.7  cli command " no event manager applet UPGRADE_AP_PREDOWNLOAD_DO"
  action 002.020.15.7  cli command " no event manager applet UPGRADE_ACTIVATE_DO"
  action 002.020.80    cli command "end"
  action 002.020.90   end
  action 002.020.99   cli command "wr mem"
  action 070          comment == install activate
  action 070.010.01   counter name "UPGRADE_FLAG_ISSU_CHK" op nop
- action 070.010.02   set UPGRADE_FLAG_ISSU_CHK $_counter_value_remain
- action 070.010.03   syslog msg "UPGRADE_FLAG_ISSU_CHK is $UPGRADE_FLAG_ISSU_CHK"
- action 070.010.10   if $UPGRADE_FLAG_ISSU_CHK eq 1
- action 070.010.15    cli command "install activate issu"
+ action 070.010.10   if $_counter_value_remain eq 1
+ action 070.010.15.1    syslog msg "UPGRADE_FLAG_ISSU_CHK is $_counter_value_remain doing: install activate issu"
+ action 070.010.15.2    cli command "install activate issu"
  action 070.020      else
- action 070.020.25    cli command "install activate" pattern "y\/n"
- action 070.020.26.0  comment == This operation may require a reload of the system. Do you want to proceed
+ action 070.020.25.1    syslog msg "UPGRADE_FLAG_ISSU_CHK is $_counter_value_remain doing: install activate"
+ action 070.020.25.2    cli command "install activate" pattern "y\/n"
+ action 070.020.26.0  comment == This operation may require a reload oxf the system. Do you want to proceed
  action 070.020.26.1  cli command "y"
  action 070.999      end
 !
 
 !
-no event manager applet UPGRADE_COMMIT_ISSU_SYS authorization bypass
-event manager applet UPGRADE_COMMIT_ISSU_SYS authorization bypass
- event syslog pattern "UPGRADE-6-STAGGERED_UPGRADE_COMPLETE" maxrun 900
- action 070.012    policy UPGRADE_COMMIT_DO
-!
-
-!
 no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypass
-event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypass
- event syslog pattern "SYS-5-RESTART: System restarted" maxrun 900
- ! TODO: check to see if there is an outstanding install "U" status
+   event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypass
+ event tag NONE none
+ event tag SYS_RESTART syslog pattern "SYS-5-RESTART: System restarted" maxrun 900
+ trigger
+  correlate event NONE or event SYS_RESTART
  ! TODO: build loop that sends message every loop .. eg 1 min loop .. as a countdown awareness
- action 000.000    syslog msg "Running ... waiting to trigger commit"
- action 000.010    wait 600
- action 070.012    policy UPGRADE_COMMIT_DO
+ action 000.000    syslog msg "Running ... "
+ action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
+ action 002.010.01   if $UPGRADE_FLAG_DESTROY eq 1
+ action 002.010.02    syslog msg "Destroy self"
+ action 002.020.01    cli command "config t"
+ action 002.020.16.3  cli command " no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART"
+ action 002.020.80    cli command "end"
+ action 002.020.90   end
+ action 002.020.99   cli command "wr mem"
+ action 070.138.025.0 comment == check issu state detail to see if in progress
+ action 070.138.025.1 cli command "show issu state detail | inc Current ISSU Status: In Progress"
+ action 070.138.025.2 regexp "Current ISSU Status: (In Progress)" "$_cli_result" match match1
+ action 070.138.026.1 if $_regexp_result eq "1"
+ action 070.138.026.6  syslog msg "Current ISSU Status: In Progress .. do nothing special"
+ action 070.138.026.8  exit
+ action 070.138.026.9 end
+ action 070.150.011 set loop 20
+ action 070.150.012 set period 20
+ action 070.150.020 while $loop gt 0
+ action 070.150.025.0 comment == check if there is an install summary image "U" state
+ action 070.150.025.1 cli command "sho install summary | inc IMG"
+ action 070.150.025.2 regexp "IMG[\s]+(U)[\s]+([^\s]+)" "$_cli_result" match STATE VER
+ action 070.150.026.1 if $_regexp_result ne "1"
+ action 070.150.026.6  syslog msg "IMG U missing .. nothing to commit"
+ action 070.150.026.8  exit
+ action 070.150.026.9 end
+ action 070.150.030   multiply $loop $period
+ action 070.150.040   syslog msg "Running ... waiting $_result seconds to trigger commit $VER"
+ action 070.150.050   wait 20
+ action 070.150.060   decrement loop 1
+ action 070.150.070  end
+ action 070.170    policy UPGRADE_COMMIT_DO
 !
 
 !
 no event manager applet UPGRADE_COMMIT_DO authorization bypass
-event manager applet UPGRADE_COMMIT_DO authorization bypass
- event none maxrun 900
- action 000.000    syslog msg "Running ... "
+   event manager applet UPGRADE_COMMIT_DO authorization bypass
+ event tag NONE none maxrun 900
+ event tag SYS_STAGGERED_UPGRADE_COMPLETE syslog pattern "UPGRADE-6-STAGGERED_UPGRADE_COMPLETE"
+ trigger
+  correlate event NONE or event SYS_STAGGERED_UPGRADE_COMPLETE
  action 001        comment == CLI housekeeping
  action 001.010    cli command "enable"
+ action 001.015    cli command "term exec prompt timestamp"
  action 001.020    cli command "term length 0"
- action 002        policy UPGRADE_CLEANUP_DO
  action 070        comment == install commit
- action 070.070    cli command "install commit"
+ action 070.070    syslog msg "doing: install commit"
+ action 070.071    cli command "install commit"
+!
+
+!
+no event manager applet UPGRADE_FINISH_COMMIT authorization bypass
+   event manager applet UPGRADE_FINISH_COMMIT authorization bypass
+ event tag NONE none maxrun 900
+ event tag SYS_FINISH_COMMIT syslog pattern "INSTALL-5-INSTALL_COMPLETED_INFO:.*Completed install commit"
+ trigger
+  correlate event NONE or event SYS_FINISH_COMMIT
+ action 070.070    syslog msg "doing: UPGRADE_CLEANUP_DO"
+ action 070.071    policy UPGRADE_CLEANUP_DO
 !
 
 !
 no event manager applet UPGRADE_CLEANUP_DELAY authorization bypass
-event manager applet UPGRADE_CLEANUP_DELAY authorization bypass
- event timer countdown name UPGRADE_CLEANUP_DELAY time 7200 maxrun 180
- action 070.012    policy UPGRADE_CLEANUP_DO
+   event manager applet UPGRADE_CLEANUP_DELAY authorization bypass
+ event tag UPGRADE_CLEANUP_DELAY timer countdown name UPGRADE_CLEANUP_DELAY time 7200
+ trigger
+  correlate event UPGRADE_CLEANUP_DELAY
+ action 070.070    syslog msg "doing: UPGRADE_CLEANUP_DO"
+ action 070.071    policy UPGRADE_CLEANUP_DO
+!
+
+!
+no event manager applet UPGRADE_CLEANUP_DELAY_MSG authorization bypass
+   event manager applet UPGRADE_CLEANUP_DELAY_MSG authorization bypass
+ event tag UPGRADE_CLEANUP_DELAY_MSG timer watchdog name UPGRADE_CLEANUP_DELAY_MSG time 10
+ trigger
+  correlate event UPGRADE_CLEANUP_DELAY_MSG
+ action 001        comment == CLI housekeeping
+ action 001.010    cli command "enable"
+ action 001.015    cli command "term exec prompt timestamp"
+ action 001.020    cli command "term length 0"
+ action 080.150.055.1 cli command "show event manager statistics server"
+ action 080.150.055.2 regexp "UPGRADE_CLEANUP_DELAY[\s]+countdown[\s]+([0-9]+)" "$_cli_result" match match1
+ action 080.150.056.1 if $_regexp_result ne "1"
+ action 080.150.056.2  exit
+ action 080.150.056.3 end
+ action 080.150.056.4 set UPGRADE_CLEANUP_DELAY $match1
+ action 080.150.056.5 syslog msg "UPGRADE_CLEANUP_DO will be called in $UPGRADE_CLEANUP_DELAY seconds"
+ action 080.160.010.02  set UPGRADE_CLEANUP_DELAY_MSG_NEW 600
+ action 080.160.020   if $UPGRADE_CLEANUP_DELAY le 60
+ action 080.160.020.01  syslog msg "UPGRADE_CLEANUP_DELAY remaining time is $UPGRADE_CLEANUP_DELAY less than 60"
+ action 080.160.020.02  set UPGRADE_CLEANUP_DELAY_MSG_NEW 10
+ action 080.160.030   elseif $UPGRADE_CLEANUP_DELAY le 600
+ action 080.160.030.01  syslog msg "UPGRADE_CLEANUP_DELAY remaining time is $UPGRADE_CLEANUP_DELAY less than 600"
+ action 080.160.030.02  set UPGRADE_CLEANUP_DELAY_MSG_NEW 60
+ action 080.160.040   elseif $UPGRADE_CLEANUP_DELAY le 1800
+ action 080.160.040.01  syslog msg "UPGRADE_CLEANUP_DELAY remaining time is $UPGRADE_CLEANUP_DELAY less than 1800"
+ action 080.160.040.02  set UPGRADE_CLEANUP_DELAY_MSG_NEW 300
+ action 080.160.050   end
+ action 080.190.01  cli command "config t"
+ action 080.190.02  cli command " event manager applet UPGRADE_CLEANUP_DELAY_MSG"
+ action 080.190.03  cli command "  event tag UPGRADE_CLEANUP_DELAY_MSG timer watchdog name UPGRADE_CLEANUP_DELAY_MSG time $UPGRADE_CLEANUP_DELAY_MSG_NEW"
+ action 080.190.09  cli command "end"
+ action 080.190.99   cli command "wr mem"
 !
 
 !
 no event manager applet UPGRADE_CLEANUP_DO authorization bypass
-event manager applet UPGRADE_CLEANUP_DO authorization bypass
- event none maxrun 180
+   event manager applet UPGRADE_CLEANUP_DO authorization bypass
+ event tag NONE none maxrun 180
+ trigger
+  correlate event NONE
  action 000.000      syslog msg "Running ... "
  action 001          comment == CLI housekeeping
  action 001.010      cli command "enable"
+ action 001.015      cli command "term exec prompt timestamp"
  action 001.020      cli command "term length 0"
  action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
  action 002.010.01   if $UPGRADE_FLAG_DESTROY eq 1
  action 002.010.02    syslog msg "Destroy self"
  action 002.020.01    cli command "config t"
- action 002.020.11    cli command " no event manager applet UPGRADE_TRIGGER"
+ action 002.020.10.1  cli command " no event manager environment UPGRADE_FLAG_SOURCE"
+ action 002.020.10.2  cli command " no event manager environment  UPGRADE_FLAG_DESTROY"
+ action 002.020.11.7  cli command " no event manager applet UPGRADE_FLAG_DECLARE"
  action 002.020.12.7  cli command " no event manager applet UPGRADE_DO"
- action 002.020.13    cli command " no event manager applet UPGRADE_ISSU_CHK_FAILED"
- action 002.020.14.1  cli command " no event manager applet UPGRADE_AP_PREDOWNLOAD_SYS"
+ action 002.020.13.1  cli command " no event manager applet UPGRADE_INSTALL_FAILED"
+ action 002.020.13.2  cli command " no event manager applet UPGRADE_ISSU_CHK_FAILED"
  action 002.020.14.7  cli command " no event manager applet UPGRADE_AP_PREDOWNLOAD_DO"
- action 002.020.15.1  cli command " no event manager applet UPGRADE_ACTIVATE_SYS"
  action 002.020.15.7  cli command " no event manager applet UPGRADE_ACTIVATE_DO"
- action 002.020.16.1  cli command " no event manager applet UPGRADE_COMMIT_ISSU_SYS"
- action 002.020.16.2  cli command " no event manager applet UPGRADE_COMMIT_ISSU_DELAY_SYS"
  action 002.020.16.3  cli command " no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART"
  action 002.020.16.7  cli command " no event manager applet UPGRADE_COMMIT_DO"
+ action 002.020.17.7  cli command " no event manager applet UPGRADE_FINISH_COMMIT"
  action 002.020.18.5  cli command " no event manager applet UPGRADE_CLEANUP_DELAY"
+ action 002.020.18.6  cli command " no event manager applet UPGRADE_CLEANUP_DELAY_MSG"
  action 002.020.18.7  cli command " no event manager applet UPGRADE_CLEANUP_DO"
- action 002.020.91    cli command "end"
- action 002.029      end
- action 002.090      cli command "wr mem"
+ action 002.020.80    cli command "end"
+ action 002.020.90   end
+ action 002.020.99   cli command "wr mem"
 !
 
 ! now call this from conf mode.. so we can load this with copy http://<BLAH>/eem_UPGRADE_ISSU.eem
-do event manager run UPGRADE_TRIGGER
+do event manager run UPGRADE_DO
 !
 !
 end
