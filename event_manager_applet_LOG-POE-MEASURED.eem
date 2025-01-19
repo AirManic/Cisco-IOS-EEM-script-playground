@@ -1,0 +1,22 @@
+no event manager applet LOG-POE-MEASURED
+   event manager applet LOG-POE-MEASURED
+ event neighbor-discovery interface regexp Ethernet cdp update
+ action 000.000.000 cli command "enable"
+ action 110.000.010 cli command "show power inline $_nd_short_local_intf_name detail"
+ action 130.000     comment ### only process if it is an AP 9100 series platform
+ action 130.000.010 regexp "cisco C91" "$_nd_cdp_platform"
+ action 130.000.020 if $_regexp_result eq "0" goto 999.999.999
+ action 130.010     comment ### given AP platform, extract $version_short
+ action 130.010.005 set version_short "TBD"
+ action 130.010.010 regexp "Version: ([^\s\n]+)" "$_nd_cdp_version" match version_short
+ action 140.000     comment ### get power inline information
+ action 140.010.005 set poe_admin "TBD"
+ action 140.010.006 set poe_drawn "TBD"
+ action 140.010.007 set poe_measured "TBD"
+ action 140.010.010 cli command "show power inline $_nd_short_local_intf_name detail"
+ action 140.010.055 regexp "Admin Value: ([^\s\r\n]+)" "$_cli_result" match poe_admin
+ action 140.010.056 regexp "Power drawn from the source: ([^\s\r\n]+)" "$_cli_result" match poe_drawn
+ action 140.010.057 regexp "Measured at the port: ([^\s\r\n]+)" "$_cli_result" match poe_measured
+ action 900.900     comment ### print some results
+ action 900.900.010 syslog msg "Device: $_nd_cdp_entry_name Version: $version_short Type: $_nd_cdp_platform Switchport: $_nd_short_local_intf_name Admin: $poe_admin Drawn: $poe_drawn Measured: $poe_measured"
+ action 999.999.999 exit 0
