@@ -1,38 +1,150 @@
-import argparse
+
+'''
+BSD 3-Clause License
+
+Copyright (c) 2024, grogier@cisco.com
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+Cliff Notes ... pending nicer README.md
+
+eem_AP_Rename.csv is simple format.. AP name followed by [in any order] AP details of SerialNum,MACenet, MACradio
+  - AP name is case-sensitive, char for char
+  - AP details will all be compared as forced upper case, eg serial number and MAC addresses
+  - AP details, if it is only hexdigits with optional delimiters of [:.-], the delimiters will be stripped
+      and uppercase for comparison to same on WLC AP list.
+example file contents:
+ ap-c9130-VRF , KWC233303FPx, 04eb.409e.2cd0x, 04:eb:40-9f-cc-e0
+ ap-c9120-VRF , c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
+
+
+no event manager applet eem_AP_Rename
+   event manager applet eem_AP_Rename
+ event timer cron cron-entry "*/15 * * * *" maxrun 60
+ action 0.0 syslog msg "Started"
+ action 1.0 cli command "enable"
+ action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/" pattern "]"
+ action 2.2 cli command "" pattern "[confirm]"
+ action 2.3 cli command "y"
+ action 2.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.py bootflash:/guest-share/" pattern "]"
+ action 2.6 cli command "" pattern "[confirm]"
+ action 2.7 cli command "y"
+ action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py"
+ action 9.0 syslog msg "Finished"
+
+
+config t
+iox
+app-hosting appid guestshell
+ app-vnic management guest-interface 0
+
+ '''
+
 import re
+import csv
+import string
 from cli import cli
-from datetime import datetime
 import eem
 import time
-import sys
 
-old_stdout = sys.stdout
-sys.stdout = open('/flash/guest-share/eem_AP_Rename.log', 'a+')
-current_dateTime = datetime.now()
-sys.stdout.write('\n')
-sys.stdout.write('#' * 50)
-sys.stdout.write('\n')
-sys.stdout.write(str(current_dateTime))
-sys.stdout.write('\n')
+my_name = "eem_AP_Rename.py"
 
-ap_dct = {}
+# appears to be buggy to use eem.action_syslog()
+# eem.action_syslog("SAMPLE SYSLOG MESSAGE")
 
-# Create the parser for extracting the expiry time
-parser = argparse.ArgumentParser()
-parser.add_argument('-d', '--days', type=int, required=False,
-                    help='specify the days any AP below threshold would reboot')
-args = parser.parse_args()
+# doing open on IOXMAN /dev/ttyS2 must be 'w' else os.open WRONLY
+# looks time.sleep(1.001) delay must be met between my_syslog.write() calls
+# TODO given that writing to /dev/ttyS2 will drop frames if writing faster than 2-3 messages per sec,
+#   need to be careful to my_syslog.write() only when minimally required.
+my_syslog = open('/dev/ttyS2', 'w')
+# for syslogd magic number is a123b234 with version 1
+s_DEBUG  = f'[a123b234,1,7]{my_name} '
+s_INFO   = f'[a123b234,1,6]{my_name} '
+s_NOTICE = f'[a123b234,1,5]{my_name} '
+s_WARN   = f'[a123b234,1,4]{my_name} '
+s_ERR    = f'[a123b234,1,3]{my_name} '
+s_CRIT   = f'[a123b234,1,2]{my_name} '
+
+# Initialize the reverse lookup dictionary
+ap_new_dct = {}
+ap_cur_dct = {}
+
+# Open the CSV file for the desired AP mapping
+with open('/flash/guest-share/eem_AP_Rename.csv') as csvfile:
+    # Using DictReader to read CSV with specified fieldnames
+    ap_csv_dct = csv.DictReader(csvfile, fieldnames=['ap_name'], restkey='ap_details', restval=[])
+
+    for row in ap_csv_dct:
+        # Extract the AP name and details
+        ap_name = row['ap_name'].strip()
+        ap_details = row.get('ap_details', [])
+
+        # Build the reverse lookup dictionary
+        for aspect in ap_details:
+            aspect = aspect.upper().strip()
+            # see if this looks like a MAC address.. if yes, then distill down to only upper case hex digits
+            if all(c in '0123456789abcdefABCDEF.:-\s' for c in aspect):
+                aspect = re.sub('[^0-9a-fA-F]','',aspect)
+            ap_new_dct[aspect.strip()] = ap_name.strip()
 
 # get the AP list from the WLC
 ap_summ = cli("show ap summary")
-ap_list = re.findall('(^\S+)\s+(\d)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)', ap_summ, re.MULTILINE)
+ap_list = re.findall('(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)', ap_summ, re.MULTILINE)
 
-for ap_name,ap_slots,ap_model,ap_MACenet,apMACradio,ap_CC,ap_RD,ap_ip,ap_state in ap_list:
-    ap_inc_serial = cli("sh ap name {} config general | inc AP Serial Number".format(ap_name))
-    try:
-        ap_serial = re.search('^(AP Serial Number\s+):\s+(\S+)', ap_inc_serial)
-        ap_dct[ap_serial.group(2)] = ap_name
-        sys.stdout.write('{} is serial {}\n'.format(ap_dct[ap_serial.group(2)],ap_serial.group(2)))
-    except:
-        sys.stdout.write('failed to process {}\n'.format(ap_name))
+ap_key_list = ap_new_dct.keys()
+
+for ap_name,ap_model,ap_MACenet,apMACradio in ap_list:
+
+    # assume no need to rename AP
+    ap_new_aspect = None
+    ap_new_name = None
+
+    ap_inc_serial = cli(f"sh ap name {ap_name} config general | inc AP Serial Number")
+    ap_serial_re = re.search('^(AP Serial Number\s+):\s+(\S+)', ap_inc_serial)
+    ap_serial = ap_serial_re.group(2)
+
+    # pecking order here, so last match wins
+    for aspect in [apMACradio,ap_MACenet,ap_serial]:
+        # see if this looks like a MAC address.. if yes, then distill down to only upper case hex digits
+        if all(c in '0123456789abcdefABCDEF.:-\s' for c in aspect):
+            aspect = re.sub('[^0-9a-fA-F]', '', aspect)
+        aspect = aspect.upper()
+        if aspect in ap_key_list and not(ap_name == ap_new_dct[aspect]):
+            ap_new_aspect = aspect
+            ap_new_name = ap_new_dct[ap_new_aspect]
+
+    # if ap_new_name, then do rename..
+    if ap_new_name:
+        my_syslog.write(f"{s_DEBUG}Renaming {ap_name} to {ap_new_name} per {ap_new_aspect} check\n")
+        time.sleep(1.001)
+        cli(f"ap name {ap_name} name {ap_new_name}")
+
+my_syslog.close()
+# this sleep(1.001) is to allow our syslog to output before ending back to eem applet
+time.sleep(1.001)
+
 
