@@ -139,7 +139,7 @@ for ap_name,ap_model,ap_MACenet,apMACradio in ap_list:
 
     # if ap_new_name, then do rename..
     if ap_new_name:
-        my_syslog.write(f"{s_DEBUG}Renaming {ap_name} to {ap_new_name} per {ap_new_aspect} check\n")
+        my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} per {ap_new_aspect} check\n")
         time.sleep(1.001)
         cli(f"ap name {ap_name} name {ap_new_name}")
 
