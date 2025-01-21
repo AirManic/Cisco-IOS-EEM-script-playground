@@ -38,7 +38,7 @@ eem_AP_Rename.csv is simple format.. AP name followed by [in any order] AP detai
   - AP details, if it is only hexdigits with optional delimiters of [:.-], the delimiters will be stripped
       and uppercase for comparison to same on WLC AP list.
 example file contents:
- ap-c9130-VRF , KWC233303FPx, 04eb.409e.2cd0x, 04:eb:40-9f-cc-e0
+ ap-c9130-VRF , KWC233303FP, 04eb.409e.2cd0, 04:eb:40-9f-cc-e0
  ap-c9120-VRF , c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
 
 
