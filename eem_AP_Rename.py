@@ -81,7 +81,7 @@ import time
 
 my_name = "eem_AP_Rename.py"
 
-# appears to be buggy to use eem.action_syslog()
+# eem.action_syslog() appears to be not supported in 9800 IOS-XE
 # eem.action_syslog("SAMPLE SYSLOG MESSAGE")
 
 # doing open on IOXMAN /dev/ttyS2 must be 'w' else os.open WRONLY
