@@ -1,5 +1,4 @@
-
-'''
+"""
 BSD 3-Clause License
 
 Copyright (c) 2024, grogier@cisco.com
@@ -61,8 +60,11 @@ config t
 iox
 app-hosting appid guestshell
  app-vnic management guest-interface 0
+end
 
- '''
+guestshell enable
+
+ """
 
 import re
 import csv
@@ -91,7 +93,6 @@ s_CRIT   = f'[a123b234,1,2]{my_name} '
 
 # Initialize the reverse lookup dictionary
 ap_new_dct = {}
-ap_cur_dct = {}
 
 # Open the CSV file for the desired AP mapping
 with open('/flash/guest-share/eem_AP_Rename.csv') as csvfile:
