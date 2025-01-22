@@ -53,7 +53,7 @@ event manager session cli username "EEM_USER" privilege 15
   event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.02/C9800-CL-universalk9.17.09.02.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.04a/C9800-CL-universalk9.17.09.04a.SPA.bin"
-!_event manager environment UPGRADE_FLAG_SOURCE "tftp://192.168.201.142/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
+! event manager environment UPGRADE_FLAG_SOURCE "tftp://192.168.201.142/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.06/C9800-CL-universalk9.17.09.06.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.12.03/C9800-CL-universalk9.17.12.03.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.12.04/C9800-CL-universalk9.17.12.04.SPA.bin"
@@ -63,7 +63,7 @@ event manager session cli username "EEM_USER" privilege 15
 
 ! For 9800L == set this first .. to set what image to upgrade
   event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.06.08/C9800-L-universalk9_wlc.17.06.08.SPA.bin"
-! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.15.02/C9800-L-universalk9_wlc.17.15.02.SPA.bin"
+  event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.15.02/C9800-L-universalk9_wlc.17.15.02.SPA.bin"
 !
 
 !
@@ -278,8 +278,11 @@ no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypa
  event tag SYS_RESTART syslog pattern "SYS-5-RESTART: System restarted" maxrun 900
  trigger
   correlate event NONE or event SYS_RESTART
- ! TODO: build loop that sends message every loop .. eg 1 min loop .. as a countdown awareness
- action 000.000    syslog msg "Running ... "
+ action 000.000      syslog msg "Running ... "
+ action 001          comment == CLI housekeeping
+ action 001.010      cli command "enable"
+ action 001.015      cli command "term exec prompt timestamp"
+ action 001.020      cli command "term length 0"
  action 002          comment == destroy self so run only once if something goes wrong.. won't reoccur; running instance does not stop
  action 002.010.01   if $UPGRADE_FLAG_DESTROY eq 1
  action 002.010.02    syslog msg "Destroy self"
@@ -289,20 +292,22 @@ no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypa
  action 002.020.90   end
  action 002.020.99   cli command "wr mem"
  action 070.138.025.0 comment == check issu state detail to see if in progress
- action 070.138.025.1 cli command "show issu state detail | inc Current ISSU Status: In Progress"
- action 070.138.025.2 regexp "Current ISSU Status: (In Progress)" "$_cli_result" match match1
+ action 070.138.025.1 cli command "show issu state detail | inc Current ISSU Status"
+ action 070.138.025.11  syslog msg "Current ISSU Status result is $_cli_result"
+ action 070.138.025.2 regexp "Current ISSU Status: (In Progress)" "$_cli_result" match STATE
  action 070.138.026.1 if $_regexp_result eq "1"
- action 070.138.026.6  syslog msg "Current ISSU Status: In Progress .. do nothing special"
+ action 070.138.026.6  syslog msg "Current ISSU Status: here here $STATE .. do nothing special"
  action 070.138.026.8  exit
  action 070.138.026.9 end
  action 070.150.011 set loop 20
  action 070.150.012 set period 20
  action 070.150.020 while $loop gt 0
  action 070.150.025.0 comment == check if there is an install summary image "U" state
- action 070.150.025.1 cli command "sho install summary | inc IMG"
+ action 070.150.025.1 cli command "show install summary | inc IMG"
+ action 070.150.025.11 set STATE "TBD"
  action 070.150.025.2 regexp "IMG[\s]+(U)[\s]+([^\s]+)" "$_cli_result" match STATE VER
  action 070.150.026.1 if $_regexp_result ne "1"
- action 070.150.026.6  syslog msg "IMG U missing .. nothing to commit"
+ action 070.150.026.6  syslog msg "IMG is $STATE .. nothing to commit"
  action 070.150.026.8  exit
  action 070.150.026.9 end
  action 070.150.030   multiply $loop $period
