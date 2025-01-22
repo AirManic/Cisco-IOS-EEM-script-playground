@@ -41,6 +41,9 @@ example file contents:
  ap-c9120-VRF , c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
 
 
+!
+conf t
+!
 no event manager applet eem_AP_Rename
    event manager applet eem_AP_Rename
  event timer cron cron-entry "*/15 * * * *" maxrun 60
@@ -54,17 +57,20 @@ no event manager applet eem_AP_Rename
  action 2.7 cli command "y"
  action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py"
  action 9.0 syslog msg "Finished"
+!
+end
+!
 
-
+!
 config t
 iox
 app-hosting appid guestshell
  app-vnic management guest-interface 0
 end
-
+!
 guestshell enable
-
- """
+!
+"""
 
 import re
 import csv

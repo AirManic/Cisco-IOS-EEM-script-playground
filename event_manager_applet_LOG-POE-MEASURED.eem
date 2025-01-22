@@ -32,6 +32,9 @@
 ! Cliff Notes ... pending nicer README.md
 ! """
 
+!
+conf t
+!
 no event manager applet LOG-POE-MEASURED
    event manager applet LOG-POE-MEASURED
  event neighbor-discovery interface regexp Ethernet cdp update
@@ -54,3 +57,6 @@ no event manager applet LOG-POE-MEASURED
  action 900.900     comment ### print some results
  action 900.900.010 syslog msg "Device: $_nd_cdp_entry_name Version: $version_short Type: $_nd_cdp_platform Switchport: $_nd_short_local_intf_name Admin: $poe_admin Drawn: $poe_drawn Measured: $poe_measured"
  action 999.999.999 exit 0
+!
+end
+!

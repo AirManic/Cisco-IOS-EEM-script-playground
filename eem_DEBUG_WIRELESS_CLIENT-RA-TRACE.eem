@@ -32,7 +32,11 @@
 ! Cliff Notes ... pending nicer README.md
 ! """
 
-event manager applet Client_Debug_Rotate
+!
+conf t
+!
+no event manager applet Client_Debug_Rotate
+   event manager applet Client_Debug_Rotate
  event none maxrun 600
  action 000.010 cli command "enable"
  action 001.000 comment Load up DUTs [Device Under Study] with MAC addresses
@@ -49,3 +53,6 @@ event manager applet Client_Debug_Rotate_cron
  event timer cron name Client_Debug_Rotate_cron cron-entry "*/5 23 * * *"
  action 000 cli command "enable"
  action 010 cli command "event manager run Client_Debug_Rotate"
+!
+end
+!

@@ -31,6 +31,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Cliff Notes ... pending nicer README.md
 
+!
+conf t
+!
 no event manager applet eem_SYSLOG
    event manager applet eem_SYSLOG
  event timer cron cron-entry "*/1 * * * *" maxrun 60
@@ -40,16 +43,19 @@ no event manager applet eem_SYSLOG
  action 2.7 cli command "y"
  action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_SYSLOG.py"
  action 9.0 syslog msg "Finished"
+!
+end
+!
 
-
+!
 config t
 iox
 app-hosting appid guestshell
  app-vnic management guest-interface 0
 end
-
+!
 guestshell enable
-
+!
 """
 
 import eem

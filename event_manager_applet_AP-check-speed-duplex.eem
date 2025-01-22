@@ -32,7 +32,11 @@
 ! Cliff Notes ... pending nicer README.md
 ! """
 
-event manager applet AP-check-speed-duplex
+!
+conf t
+!
+no event manager applet AP-check-speed-duplex
+   event manager applet AP-check-speed-duplex
  event neighbor-discovery interface regexp Ethernet cdp add
  action 000           comment ### only check if attached device is an cisco AIR- AP model
  action 000.050       regexp "cisco AIR-" "$_nd_cdp_platform"
@@ -58,3 +62,6 @@ event manager applet AP-check-speed-duplex
  action 030.020.017   set _speed "$_string_result"
  action 030.090       comment ### send syslog message
  action 030.091       syslog msg "$_nd_local_intf_name is not a-full/a-1000 instead $_duplex/$_speed for $_nd_cdp_entry_name $_nd_cdp_platform"
+ !
+ end
+ !

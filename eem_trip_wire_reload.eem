@@ -33,7 +33,10 @@
 ! """
 
 !
-event manager applet ZTP-do-reload-in-5
+conf t
+!
+no event manager applet ZTP-do-reload-in-5
+   event manager applet ZTP-do-reload-in-5
     event none maxrun 60
     action 000         comment ### schedule a reload, but give 5 mins for someone on conosole or ssh to cancel it
     action 000.010     syslog msg "ZTP-trip-wire-Gi0 sensed Gi0 going down, so scheduling reload in 5"
@@ -56,7 +59,8 @@ event manager applet ZTP-do-reload-in-5
 track 900 interface GigabitEthernet0 line-protocol
     delay down 10
 !
-event manager applet ZTP-trip-wire-Gi0
+no event manager applet ZTP-trip-wire-Gi0
+   event manager applet ZTP-trip-wire-Gi0
     event track 900 state down maxrun 60
     action 000         comment ### call event manager run ZTP-do-reload-in-5
     action 000.010     syslog msg "ZTP-trip-wire-Gi0 sensed Gi0 going down, so scheduling reload in 5"
@@ -72,10 +76,14 @@ ip sla schedule 901 life forever start-time now
 track 901 ip sla 901 reachability
     delay down 180
 !
-event manager applet ZTP-trip-wire-icmp-echo
-event manager applet ZTP-trip-wire-icmp-echo
+no event manager applet ZTP-trip-wire-icmp-echo
+   event manager applet ZTP-trip-wire-icmp-echo
     event track 901 state down maxrun 60
     action 000         comment ### call event manager run ZTP-do-reload-in-5
     action 000.010     syslog msg "ZTP-trip-wire-Gi0 sensed Gi0 going down, so scheduling reload in 5"
     action 000.100.010 cli command "enable"
     action 000.100.011 cli command "event manager run ZTP-do-reload-in-5"
+
+!
+end
+!

@@ -32,7 +32,11 @@
 ! Cliff Notes ... pending nicer README.md
 ! """
 
-event manager applet update-port-desc-vlan
+!
+conf t
+!
+no event manager applet update-port-desc-vlan
+   event manager applet update-port-desc-vlan
  event neighbor-discovery interface regexp Ethernet cdp add
  action 001 cli command "enable"
  action 002 cli command "show int $_nd_local_intf_name | inc Description:"
@@ -70,3 +74,6 @@ event manager applet update-port-desc-vlan
  action 034  end
  action 035 end
  action 036 cli command "end"
+!
+end
+!
