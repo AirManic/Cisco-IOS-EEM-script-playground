@@ -96,6 +96,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-i', '--infile',type=str, required=False,
                     default=f"{DEFAULT_INFILE}",
                     help=f"specify csv infile, defaults to {DEFAULT_INFILE}")
+parser.add_argument('-l', '--location', required=False, action='store_true',
+                    help=f"treat 2nd csv field as location data for AP, defaults to false")
 args = parser.parse_args()
 
 # eem.action_syslog() appears to be not supported in 9800 IOS-XE
