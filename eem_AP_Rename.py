@@ -90,12 +90,12 @@ my_name = "eem_AP_Rename.py"
 #   need to be careful to my_syslog.write() only when minimally required.
 my_syslog = open('/dev/ttyS2', 'w')
 # for syslogd magic number is a123b234 with version 1
-s_DEBUG  = f'[a123b234,1,7]{my_name} '
-s_INFO   = f'[a123b234,1,6]{my_name} '
-s_NOTICE = f'[a123b234,1,5]{my_name} '
-s_WARN   = f'[a123b234,1,4]{my_name} '
-s_ERR    = f'[a123b234,1,3]{my_name} '
-s_CRIT   = f'[a123b234,1,2]{my_name} '
+s_DEBUG  = f"[a123b234,1,7]{my_name} "
+s_INFO   = f"[a123b234,1,6]{my_name} "
+s_NOTICE = f"[a123b234,1,5]{my_name} "
+s_WARN   = f"[a123b234,1,4]{my_name} "
+s_ERR    = f"[a123b234,1,3]{my_name} "
+s_CRIT   = f"[a123b234,1,2]{my_name} "
 
 # Initialize the reverse lookup dictionary
 ap_new_dct = {}
@@ -118,40 +118,38 @@ with open('/flash/guest-share/eem_AP_Rename.csv') as csvfile:
                 aspect = re.sub('[^0-9a-fA-F]','',aspect)
             ap_new_dct[aspect.strip()] = ap_name.strip()
 
-# get the AP list from the WLC
-ap_summ = cli("show ap summary")
-ap_list = re.findall('(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)', ap_summ, re.MULTILINE)
+# Retrieve the AP list from the WLC
+ap_summary = cli("show ap summary")
+ap_list = re.findall(r'(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)', ap_summary, re.MULTILINE)
 
 ap_key_list = ap_new_dct.keys()
 
-for ap_name,ap_model,ap_MACenet,apMACradio in ap_list:
-
-    # assume no need to rename AP
+for ap_name, ap_model, ap_MACenet, ap_MACradio in ap_list:
     ap_new_aspect = None
     ap_new_name = None
 
-    ap_inc_serial = cli(f"sh ap name {ap_name} config general | inc AP Serial Number")
-    ap_serial_re = re.search('^(AP Serial Number\s+):\s+(\S+)', ap_inc_serial)
-    ap_serial = ap_serial_re.group(2)
+    # Retrieve the AP serial number
+    ap_inc_serial = cli(f"show ap name {ap_name} config general | inc AP Serial Number")
+    ap_serial_match = re.search(r'^AP Serial Number\s+:\s+(\S+)', ap_inc_serial)
 
-    # pecking order here, so last match wins
-    for aspect in [apMACradio,ap_MACenet,ap_serial]:
-        # see if this looks like a MAC address.. if yes, then distill down to only upper case hex digits
-        if all(c in '0123456789abcdefABCDEF.:-\s' for c in aspect):
-            aspect = re.sub('[^0-9a-fA-F]', '', aspect)
-        aspect = aspect.upper()
-        if aspect in ap_key_list and not(ap_name == ap_new_dct[aspect]):
-            ap_new_aspect = aspect
-            ap_new_name = ap_new_dct[ap_new_aspect]
+    if ap_serial_match:
+        ap_serial = ap_serial_match.group(1)
 
-    # if ap_new_name, then do rename..
+        # Determine the new aspect and name
+        for aspect in [ap_MACradio, ap_MACenet, ap_serial]:
+            # if this looks like a MAC address.. distill down to only upper case hex digits
+            if all(c in '0123456789abcdefABCDEF.:-\s' for c in aspect):
+                aspect = re.sub(r'[^0-9a-fA-F]', '', aspect).upper()
+
+            if aspect in ap_key_list and ap_name != ap_new_dct[aspect]:
+                ap_new_aspect = aspect
+                ap_new_name = ap_new_dct[ap_new_aspect]
+
+    # Rename the AP if a new name is determined
     if ap_new_name:
-        my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} per {ap_new_aspect} check\n")
+        my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} based on {ap_new_aspect} check\n")
         time.sleep(1.001)
         cli(f"ap name {ap_name} name {ap_new_name}")
 
 my_syslog.close()
-# this sleep(1.001) is to allow our syslog to output before ending back to eem applet
-time.sleep(1.001)
-
-
+time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet
