@@ -125,7 +125,6 @@ ap_list = re.findall(r'(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)', ap_summary, re.MULT
 ap_key_list = ap_new_dct.keys()
 
 for ap_name, ap_model, ap_MACenet, ap_MACradio in ap_list:
-    ap_new_aspect = None
     ap_new_name = None
 
     # Retrieve the AP serial number
@@ -142,12 +141,11 @@ for ap_name, ap_model, ap_MACenet, ap_MACradio in ap_list:
                 aspect = re.sub(r'[^0-9a-fA-F]', '', aspect).upper()
 
             if aspect in ap_key_list and ap_name != ap_new_dct[aspect]:
-                ap_new_aspect = aspect
-                ap_new_name = ap_new_dct[ap_new_aspect]
+                ap_new_name = ap_new_dct[aspect]
 
     # Rename the AP if a new name is determined
     if ap_new_name:
-        my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} based on {ap_new_aspect} check\n")
+        my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} based on {aspect} check\n")
         time.sleep(1.001)
         cli(f"ap name {ap_name} name {ap_new_name}")
 
