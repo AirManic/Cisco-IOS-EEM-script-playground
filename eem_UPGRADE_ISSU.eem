@@ -391,5 +391,5 @@ no event manager applet UPGRADE_CLEANUP_DO authorization bypass
 ! Invocation.. so we can load this with copy http://<BLAH>/eem_UPGRADE_ISSU.eem
 do event manager run UPGRADE_DO
 
-! Final Benediction
+! Benediction
 end
