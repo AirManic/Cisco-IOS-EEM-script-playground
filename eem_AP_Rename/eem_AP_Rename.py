@@ -75,6 +75,10 @@ guestshell enable
 !
 """
 
+import argparse
+import os
+from pathlib import Path
+import sys
 import re
 import csv
 import string
@@ -82,7 +86,15 @@ from cli import cli
 import eem
 import time
 
-my_name = "eem_AP_Rename.py"
+my_name = os.path.basename(sys.argv[0])
+DEFAULT_INFILE = Path(my_name)
+
+#Create the parser for extracting the expiry time
+parser = argparse.ArgumentParser()
+parser.add_argument('-i', '--infile',type=str, required=False,
+                    default=f"{DEFAULT_INFILE}.csv",
+                    help=f"specify csv infile, defaults to {DEFAULT_INFILE}.csv")
+args = parser.parse_args()
 
 # eem.action_syslog() appears to be not supported in 9800 IOS-XE
 # eem.action_syslog("SAMPLE SYSLOG MESSAGE")
@@ -104,7 +116,7 @@ s_CRIT   = f"[a123b234,1,2]{my_name} "
 ap_new_dct = {}
 
 # Open the CSV file for the desired AP mapping
-with open('/flash/guest-share/eem_AP_Rename.csv') as csvfile:
+with open(f"/flash/guest-share/{args.infile}") as csvfile:
     # Using DictReader to read CSV with specified fieldnames
     ap_csv_dct = csv.DictReader(csvfile, fieldnames=['ap_name'], restkey='ap_details', restval=[])
 

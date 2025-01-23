@@ -3,7 +3,7 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="/eem_AP_Rename.csv">
+        <entry key="/eem_AP_Rename/eem_AP_Rename.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
