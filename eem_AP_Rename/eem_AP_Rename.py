@@ -82,18 +82,20 @@ import sys
 import re
 import csv
 import string
+from xml.dom import NAMESPACE_ERR
+
 from cli import cli
 import eem
 import time
 
 my_name = os.path.basename(sys.argv[0])
-DEFAULT_INFILE = Path(my_name)
+DEFAULT_INFILE = Path(my_name).stem + '.csv'
 
 #Create the parser for extracting the expiry time
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', '--infile',type=str, required=False,
-                    default=f"{DEFAULT_INFILE}.csv",
-                    help=f"specify csv infile, defaults to {DEFAULT_INFILE}.csv")
+                    default=f"{DEFAULT_INFILE}",
+                    help=f"specify csv infile, defaults to {DEFAULT_INFILE}")
 args = parser.parse_args()
 
 # eem.action_syslog() appears to be not supported in 9800 IOS-XE
@@ -158,7 +160,7 @@ for ap_name, ap_model, ap_MACenet, ap_MACradio in ap_list:
             if aspect in ap_key_list and ap_name != ap_new_dct[aspect]:
                 ap_new_name = ap_new_dct[aspect]
 
-    # Rename the AP if a new name is determined
+    # Always Rename the AP last .. if a new name is determined
     if ap_new_name:
         my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} based on {aspect} check\n")
         time.sleep(1.001)
