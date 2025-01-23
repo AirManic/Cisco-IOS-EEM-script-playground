@@ -46,7 +46,10 @@ conf t
 !
 no event manager applet eem_AP_Rename
    event manager applet eem_AP_Rename
- event timer cron cron-entry "*/15 * * * *" maxrun 60
+ event tag NONE none maxrun 60
+ event tag CRON timer cron cron-entry "*/15 * * * *"
+ trigger
+  correlate event NONE or event CRON
  action 0.0 syslog msg "Started"
  action 1.0 cli command "enable"
  action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/" pattern "]"
