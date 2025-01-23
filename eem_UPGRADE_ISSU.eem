@@ -1,4 +1,3 @@
-! """
 ! BSD 3-Clause License
 !
 ! Copyright (c) 2024, grogier@cisco.com
@@ -30,26 +29,17 @@
 !
 !
 ! Cliff Notes ... pending nicer README.md
-! """
 
-
-
-!
 conf t
-!
 
-!
-!= DO THIS UPFRONT ====================================================================================================
-!
+! Initial Configuration
 ap upgrade method https
 ap upgrade staggered 25
-!
 
-!
+! Event Manager Configuration
 event manager session cli username "EEM_USER" privilege 15
-!
 
-! For 9800CL == set this first .. to set what image to upgrade
+! Set Upgrade Source for 9800CL
   event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.02/C9800-CL-universalk9.17.09.02.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.04/C9800-CL-universalk9.17.09.04.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.09.04a/C9800-CL-universalk9.17.09.04a.SPA.bin"
@@ -59,25 +49,17 @@ event manager session cli username "EEM_USER" privilege 15
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.12.04/C9800-CL-universalk9.17.12.04.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.12.04ESW13/C9800-CL-universalk9.V1712_4_ESW13.SPA.bin"
 ! event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.15.02/C9800-CL-universalk9.17.15.02.SPA.bin"
-!
 
-! For 9800L == set this first .. to set what image to upgrade
+! Set Upgrade Source for 9800L
   event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.06.08/C9800-L-universalk9_wlc.17.06.08.SPA.bin"
   event manager environment UPGRADE_FLAG_SOURCE "http://192.168.201.142/ztp/images/IOS-XE-17.15.02/C9800-L-universalk9_wlc.17.15.02.SPA.bin"
-!
 
-!
-! comment == this loads the routine and embedded in it is the call to run it via "do" statement
+! Load Routine
 ! copy tftp://192.168.201.210/eem/eem_UPGRADE_ISSU.eem running-config
-!
 
-!= REFERENCE ==========================================================================================================
-!
+! References
 ! https://docs.yosemite.iosxe.net/setup/
-!
 ! https://www.cisco.com/c/en/us/support/docs/wireless/catalyst-9800-series-wireless-controllers/222405-upgrade-catalyst-9800-wlc-ha-sso-using-i.html
-
-!
 !
 ! https://www.cisco.com/c/en/us/support/docs/ios-nx-os-software/ios-xe-16/216091-best-practices-and-useful-scripts-for-ee.html
 ! https://www.cisco.com/c/en/us/support/docs/wireless/catalyst-9800-series-wireless-controllers/222405-upgrade-catalyst-9800-wlc-ha-sso-using-i.html
@@ -88,13 +70,9 @@ event manager session cli username "EEM_USER" privilege 15
 ! Dec  6 00:21:53.876 cst: %UPGRADE-6-STAGGERED_UPGRADE_COMPLETE: Chassis 2 R0/0: wncmgrd: Staggered AP Upgrade completed successfully
 ! Dec  6 00:23:05.211 cst: %INSTALL-5-INSTALL_START_INFO: Chassis 2 R0/0: install_engine: Started install commit
 ! Dec  6 00:23:39.047 cst: %INSTALL-5-INSTALL_COMPLETED_INFO: Chassis 2 R0/0: install_engine: Completed install commit ISSU
-!
-!======================================================================================================================
 
-!
-! comment == self removing .. then set to 1
+! Self-Removing Flag
 event manager environment UPGRADE_FLAG_DESTROY 1
-!
 
 !
 no event manager applet UPGRADE_FLAG_DECLARE authorization bypass
@@ -103,7 +81,6 @@ no event manager applet UPGRADE_FLAG_DECLARE authorization bypass
  trigger
   correlate event UPGRADE_FLAG_ISSU_CHK
  action 000.000    syslog msg "Running ... "
-!
 
 !
 no event manager applet UPGRADE_DO authorization bypass
@@ -142,9 +119,6 @@ no event manager applet UPGRADE_DO authorization bypass
  action 070.015.00 comment == need to do wr mem to ensure activate-commit is happy, else it will error out
  action 070.015.99 cli command "wr mem"
  action 070.017    cli command "install add file $UPGRADE_FLAG_SOURCE"
-!
-
-! 000367: Jan  8 18:55:42.135 cst: %INSTALL-3-OPERATION_ERROR_MESSAGE: Chassis 1 R0/0: install_mgr: Failed to install activate package , Error: No error or error string
 
 !
 no event manager applet UPGRADE_INSTALL_FAILED authorization bypass
@@ -159,7 +133,6 @@ no event manager applet UPGRADE_INSTALL_FAILED authorization bypass
  action 001.020    cli command "term length 0"
  action 070.010.03 syslog msg "Calling UPGRADE_CLEANUP_DO"
  action 070.010.04        policy UPGRADE_CLEANUP_DO
-!
 
 !
 no event manager applet UPGRADE_ISSU_CHK_FAILED authorization bypass
@@ -170,7 +143,6 @@ no event manager applet UPGRADE_ISSU_CHK_FAILED authorization bypass
   correlate event NONE or event SYS_ISSU_COMP_CHECK_FAILED
  action 070.010.00 counter name "UPGRADE_FLAG_ISSU_CHK" op set value 0
  action 070.010.03 syslog msg "UPGRADE_FLAG_ISSU_CHK is $_counter_value_remain"
-!
 
 !
 no event manager applet UPGRADE_AP_PREDOWNLOAD_DO authorization bypass
@@ -233,7 +205,6 @@ no event manager applet UPGRADE_AP_PREDOWNLOAD_DO authorization bypass
  action 070.250.080.020   syslog msg "Predownload not detected .. doing: UPGRADE_ACTIVATE_DO"
  action 070.250.080.030   policy UPGRADE_ACTIVATE_DO
  action 070.250.080.040 end
-!
 
 !
 no event manager applet UPGRADE_ACTIVATE_DO authorization bypass
@@ -269,7 +240,6 @@ no event manager applet UPGRADE_ACTIVATE_DO authorization bypass
  action 070.020.26.0  comment == This operation may require a reload oxf the system. Do you want to proceed
  action 070.020.26.1  cli command "y"
  action 070.999      end
-!
 
 !
 no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypass
@@ -316,7 +286,6 @@ no event manager applet UPGRADE_COMMIT_NON_ISSU_DELAY_RESTART authorization bypa
  action 070.150.060   decrement loop 1
  action 070.150.070  end
  action 070.170    policy UPGRADE_COMMIT_DO
-!
 
 !
 no event manager applet UPGRADE_COMMIT_DO authorization bypass
@@ -332,7 +301,6 @@ no event manager applet UPGRADE_COMMIT_DO authorization bypass
  action 070        comment == install commit
  action 070.070    syslog msg "doing: install commit"
  action 070.071    cli command "install commit"
-!
 
 !
 no event manager applet UPGRADE_FINISH_COMMIT authorization bypass
@@ -343,7 +311,6 @@ no event manager applet UPGRADE_FINISH_COMMIT authorization bypass
   correlate event NONE or event SYS_FINISH_COMMIT
  action 070.070    syslog msg "doing: UPGRADE_CLEANUP_DO"
  action 070.071    policy UPGRADE_CLEANUP_DO
-!
 
 !
 no event manager applet UPGRADE_CLEANUP_DELAY authorization bypass
@@ -353,7 +320,6 @@ no event manager applet UPGRADE_CLEANUP_DELAY authorization bypass
   correlate event UPGRADE_CLEANUP_DELAY
  action 070.070    syslog msg "doing: UPGRADE_CLEANUP_DO"
  action 070.071    policy UPGRADE_CLEANUP_DO
-!
 
 !
 no event manager applet UPGRADE_CLEANUP_DELAY_MSG authorization bypass
@@ -388,7 +354,6 @@ no event manager applet UPGRADE_CLEANUP_DELAY_MSG authorization bypass
  action 080.190.03  cli command "  event tag UPGRADE_CLEANUP_DELAY_MSG timer watchdog name UPGRADE_CLEANUP_DELAY_MSG time $UPGRADE_CLEANUP_DELAY_MSG_NEW"
  action 080.190.09  cli command "end"
  action 080.190.99   cli command "wr mem"
-!
 
 !
 no event manager applet UPGRADE_CLEANUP_DO authorization bypass
@@ -422,15 +387,9 @@ no event manager applet UPGRADE_CLEANUP_DO authorization bypass
  action 002.020.80    cli command "end"
  action 002.020.90   end
  action 002.020.99   cli command "wr mem"
-!
 
-! now call this from conf mode.. so we can load this with copy http://<BLAH>/eem_UPGRADE_ISSU.eem
+! Final Invocation.. so we can load this with copy http://<BLAH>/eem_UPGRADE_ISSU.eem
 do event manager run UPGRADE_DO
-!
-!
+
+! Final Benediction
 end
-!
-!
-
-!======================================================================================================================
-
