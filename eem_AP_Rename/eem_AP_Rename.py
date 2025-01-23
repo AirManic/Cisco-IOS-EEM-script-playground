@@ -81,9 +81,6 @@ from pathlib import Path
 import sys
 import re
 import csv
-import string
-from xml.dom import NAMESPACE_ERR
-
 from cli import cli
 import eem
 import time
