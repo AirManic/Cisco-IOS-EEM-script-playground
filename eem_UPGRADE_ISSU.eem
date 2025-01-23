@@ -388,7 +388,7 @@ no event manager applet UPGRADE_CLEANUP_DO authorization bypass
  action 002.020.90   end
  action 002.020.99   cli command "wr mem"
 
-! Final Invocation.. so we can load this with copy http://<BLAH>/eem_UPGRADE_ISSU.eem
+! Invocation.. so we can load this with copy http://<BLAH>/eem_UPGRADE_ISSU.eem
 do event manager run UPGRADE_DO
 
 ! Final Benediction
