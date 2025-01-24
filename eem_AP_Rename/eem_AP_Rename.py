@@ -36,9 +36,21 @@ eem_AP_Rename.csv is simple format.. AP name followed by [in any order] AP detai
   - AP details will all be compared as forced upper case, eg serial number and MAC addresses
   - AP details, if it is only hexdigits with optional delimiters of [:.-], the delimiters will be stripped
       and uppercase for comparison to same on WLC AP list.
-example file contents:
- ap-c9130-VRF , KWC233303FP, 04eb.409e.2cd0, 04:eb:40-9f-cc-e0
- ap-c9120-VRF , c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
+example file contents (** optional 2nd field to be _location_ if -l  used
+ ap-c9130-VRF , basement, KWC233303FP, 04eb.409e.2cd0S, 04:eb:40-9f-cc-e0
+ ap-c9120-VRF, "living room",c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
+
+guestshell run python3 /flash/guest-share/eem_AP_Rename.py -h
+Please note, this package[eem] is ONLY for EEM Python Scripts
+usage: eem_AP_Rename.py [-h] [-c CSV_INFILE] [-l]
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CSV_INFILE, --csv_infile CSV_INFILE
+                        specify csv infile, defaults to eem_AP_Rename.csv
+  -l, --location        treat 2nd csv field as location data for AP, defaults
+                        to false
+
+
 
 
 !
@@ -52,13 +64,13 @@ no event manager applet eem_AP_Rename
   correlate event NONE or event CRON
  action 0.0 syslog msg "Started"
  action 1.0 cli command "enable"
- action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/" pattern "]"
+ action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/custom.csv" pattern "]"
  action 2.2 cli command "" pattern "[confirm]"
  action 2.3 cli command "y"
  action 2.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.py bootflash:/guest-share/" pattern "]"
  action 2.6 cli command "" pattern "[confirm]"
  action 2.7 cli command "y"
- action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py"
+ action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv"
  action 9.0 syslog msg "Finished"
 !
 end
@@ -90,9 +102,11 @@ DEFAULT_INFILE = Path(my_name).stem + '.csv'
 
 #Create the parser for extracting the expiry time
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--infile',type=str, required=False,
+parser.add_argument('-c', '--csv_infile',type=str, required=False,
                     default=f"{DEFAULT_INFILE}",
                     help=f"specify csv infile, defaults to {DEFAULT_INFILE}")
+parser.add_argument('-l', '--location', required=False, action='store_true',
+                    help=f"treat 2nd csv field as location data for AP, defaults to false")
 args = parser.parse_args()
 
 # eem.action_syslog() appears to be not supported in 9800 IOS-XE
@@ -112,56 +126,88 @@ s_ERR    = f"[a123b234,1,3]{my_name} "
 s_CRIT   = f"[a123b234,1,2]{my_name} "
 
 # Initialize the reverse lookup dictionary
-ap_new_dct = {}
+ap_csv_dct = {}
+ap_csv_location_dct = {}
+ap_infile_csv_fieldnames = ['ap_csv_name']
+if args.location: ap_infile_csv_fieldnames.append('ap_csv_location')
 
 # Open the CSV file for the desired AP mapping
-with open(f"/flash/guest-share/{args.infile}") as csvfile:
+with open(f"/flash/guest-share/{args.csv_infile}") as csvfile:
     # Using DictReader to read CSV with specified fieldnames
-    ap_csv_dct = csv.DictReader(csvfile, fieldnames=['ap_name'], restkey='ap_details', restval=[])
+    infile_csv_dct = csv.DictReader(csvfile, fieldnames=ap_infile_csv_fieldnames, restkey='ap_csv_details', restval=[])
 
-    for row in ap_csv_dct:
+    for row in infile_csv_dct:
         # Extract the AP name and details
-        ap_name = row['ap_name'].strip()
-        ap_details = row.get('ap_details', [])
+        ap_csv_name = row['ap_csv_name'].strip()
 
+        if args.location:
+            ap_csv_location = row.get('ap_csv_location')
+            ap_csv_location_dct[ap_csv_name] = ap_csv_location.strip()
+
+        ap_csv_details = row.get('ap_csv_details', [])
         # Build the reverse lookup dictionary
-        for aspect in ap_details:
-            aspect = aspect.upper().strip()
+        for csv_aspect in ap_csv_details:
+            csv_aspect = csv_aspect.upper().strip()
             # see if this looks like a MAC address.. if yes, then distill down to only upper case hex digits
-            if all(c in '0123456789abcdefABCDEF.:-\s' for c in aspect):
-                aspect = re.sub('[^0-9a-fA-F]','',aspect)
-            ap_new_dct[aspect.strip()] = ap_name.strip()
+            if all(c in '0123456789abcdefABCDEF.:-\s' for c in csv_aspect):
+                csv_aspect = re.sub('[^0-9a-fA-F]','',csv_aspect)
+            ap_csv_dct[csv_aspect.strip()] = ap_csv_name.strip()
 
 # Retrieve the AP list from the WLC
 ap_summary = cli("show ap summary")
-ap_list = re.findall(r'(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)', ap_summary, re.MULTILINE)
+ap_list = re.findall(r'(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)\s+.*Registered\s+(.*)', ap_summary, re.MULTILINE)
 
-ap_key_list = ap_new_dct.keys()
+# Create list of aspect from the csv file to match against
+ap_csv_aspect_list = ap_csv_dct.keys()
 
-for ap_name, ap_model, ap_MACenet, ap_MACradio in ap_list:
-    ap_new_name = None
+# Step across the AP-s online
+for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location in ap_list:
 
     # Retrieve the AP serial number
-    ap_inc_serial = cli(f"show ap name {ap_name} config general | inc AP Serial Number")
-    ap_serial_match = re.search(r'^AP Serial Number\s+:\s+(\S+)', ap_inc_serial)
+    ap_cur_serial = None
+    ap_cur_inc_serial = cli(f"show ap name {ap_cur_name} config general | inc AP Serial Number")
+    ap_cur_serial_match = re.search(r'^AP Serial Number\s+:\s+(\S+)', ap_cur_inc_serial)
+    if ap_cur_serial_match: ap_cur_serial = ap_cur_serial_match.group(1)
 
-    if ap_serial_match:
-        ap_serial = ap_serial_match.group(1)
+    # little extra sanity.. as it is neede at least for ap_cur_location
+    ap_cur_name = ap_cur_name.strip()
+    ap_cur_model = ap_cur_model.strip()
+    ap_cur_MACenet = ap_cur_MACenet.strip()
+    ap_cur_MACradio = ap_cur_MACradio.strip()
+    ap_cur_location = ap_cur_location.strip()
+    ap_cur_serial = ap_cur_serial.strip()
 
-        # Determine the new aspect and name
-        for aspect in [ap_MACradio, ap_MACenet, ap_serial]:
-            # if this looks like a MAC address.. distill down to only upper case hex digits
-            if all(c in '0123456789abcdefABCDEF.:-\s' for c in aspect):
-                aspect = re.sub(r'[^0-9a-fA-F]', '', aspect).upper()
+    ap_new_aspect = None
+    ap_new_name = None
+    ap_new_location = None
 
-            if aspect in ap_key_list and ap_name != ap_new_dct[aspect]:
-                ap_new_name = ap_new_dct[aspect]
+    # Determine is there is an csv AP that matches one of the ap_cur_aspect items
+    for ap_cur_aspect in [ap_cur_MACradio, ap_cur_MACenet, ap_cur_serial]:
+        # if this looks like a MAC address.. distill down to only upper case hex digits
+        if all(c in '0123456789abcdefABCDEF.:-\s' for c in ap_cur_aspect):
+            ap_cur_aspect = re.sub(r'[^0-9a-fA-F]', '', ap_cur_aspect).upper()
 
-    # Always Rename the AP last .. if a new name is determined
-    if ap_new_name:
-        my_syslog.write(f"{s_NOTICE}Renaming {ap_name} to {ap_new_name} based on {aspect} check\n")
+        # Determine is this ap_cur_name matches one of the aspect items
+        if ap_cur_aspect in ap_csv_aspect_list:
+            # Based on this aspect match, check the ap name
+            ap_new_aspect = ap_cur_aspect
+            if ap_cur_name != ap_csv_dct[ap_new_aspect]:
+                ap_new_name = ap_csv_dct[ap_new_aspect]
+            # Based on this aspect match, check the location information
+            if args.location and ap_cur_location != ap_csv_location_dct[ap_csv_dct[ap_new_aspect]].strip('"'):
+                ap_new_location = ap_csv_location_dct[ap_csv_dct[ap_new_aspect]]
+
+    # Change location if determined ap_new_location detected
+    if ap_new_aspect and ap_new_location:
+        my_syslog.write(f"{s_NOTICE}Changing location for {ap_cur_name} based on {ap_new_aspect} match with location {ap_new_location}\n")
         time.sleep(1.001)
-        cli(f"ap name {ap_name} name {ap_new_name}")
+        cli(f"ap name {ap_cur_name} location {ap_new_location}")
+
+    # Always Rename the AP last .. if a new name is detected
+    if ap_new_aspect and ap_new_name:
+        my_syslog.write(f"{s_NOTICE}Renaming {ap_cur_name} to {ap_new_name} based on {ap_new_aspect} match\n")
+        time.sleep(1.001)
+        cli(f"ap name {ap_cur_name} name {ap_new_name}")
 
 my_syslog.close()
 time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet
