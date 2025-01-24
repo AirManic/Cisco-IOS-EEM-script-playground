@@ -36,9 +36,21 @@ eem_AP_Rename.csv is simple format.. AP name followed by [in any order] AP detai
   - AP details will all be compared as forced upper case, eg serial number and MAC addresses
   - AP details, if it is only hexdigits with optional delimiters of [:.-], the delimiters will be stripped
       and uppercase for comparison to same on WLC AP list.
-example file contents:
- ap-c9130-VRF , KWC233303FP, 04eb.409e.2cd0, 04:eb:40-9f-cc-e0
- ap-c9120-VRF , c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
+example file contents (** optional 2nd field to be _location_ if -l  used
+ ap-c9130-VRF , basement, KWC233303FP, 04eb.409e.2cd0S, 04:eb:40-9f-cc-e0
+ ap-c9120-VRF, "living room",c828.e56e.7740,c828.e5a4.c740, FJC27061YW1
+
+guestshell run python3 /flash/guest-share/eem_AP_Rename.py -h
+Please note, this package[eem] is ONLY for EEM Python Scripts
+usage: eem_AP_Rename.py [-h] [-c CSV_INFILE] [-l]
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CSV_INFILE, --csv_infile CSV_INFILE
+                        specify csv infile, defaults to eem_AP_Rename.csv
+  -l, --location        treat 2nd csv field as location data for AP, defaults
+                        to false
+
+
 
 
 !
@@ -52,13 +64,13 @@ no event manager applet eem_AP_Rename
   correlate event NONE or event CRON
  action 0.0 syslog msg "Started"
  action 1.0 cli command "enable"
- action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/" pattern "]"
+ action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/custom.csv" pattern "]"
  action 2.2 cli command "" pattern "[confirm]"
  action 2.3 cli command "y"
  action 2.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.py bootflash:/guest-share/" pattern "]"
  action 2.6 cli command "" pattern "[confirm]"
  action 2.7 cli command "y"
- action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py"
+ action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv"
  action 9.0 syslog msg "Finished"
 !
 end
@@ -90,7 +102,7 @@ DEFAULT_INFILE = Path(my_name).stem + '.csv'
 
 #Create the parser for extracting the expiry time
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--infile',type=str, required=False,
+parser.add_argument('-c', '--csv_infile',type=str, required=False,
                     default=f"{DEFAULT_INFILE}",
                     help=f"specify csv infile, defaults to {DEFAULT_INFILE}")
 parser.add_argument('-l', '--location', required=False, action='store_true',
@@ -120,7 +132,7 @@ ap_infile_csv_fieldnames = ['ap_csv_name']
 if args.location: ap_infile_csv_fieldnames.append('ap_csv_location')
 
 # Open the CSV file for the desired AP mapping
-with open(f"/flash/guest-share/{args.infile}") as csvfile:
+with open(f"/flash/guest-share/{args.csv_infile}") as csvfile:
     # Using DictReader to read CSV with specified fieldnames
     infile_csv_dct = csv.DictReader(csvfile, fieldnames=ap_infile_csv_fieldnames, restkey='ap_csv_details', restval=[])
 
