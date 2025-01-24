@@ -195,17 +195,18 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
                 ap_new_name = ap_csv_dct[ap_new_aspect]
             # Based on this aspect match, check the location information
             if args.location and ap_cur_location != ap_csv_location_dct[ap_csv_dct[ap_new_aspect]].strip('"'):
-                ap_new_location = ap_csv_location_dct[ap_csv_dct[ap_new_aspect]]
+                ap_new_location = ap_csv_location_dct[ap_csv_dct[ap_new_aspect]].strip('"')
+                if " " in ap_new_location: ap_new_location = f'"{ap_new_location}"'
 
     # Change location if determined ap_new_location detected
     if ap_new_aspect and ap_new_location:
-        my_syslog.write(f"{s_NOTICE}Changing location for {ap_cur_name} based on {ap_new_aspect} match with location {ap_new_location}\n")
+        my_syslog.write(f"{s_NOTICE}Changing {ap_cur_name} {ap_new_aspect} match to location {ap_new_location}\n")
         time.sleep(1.001)
         cli(f"ap name {ap_cur_name} location {ap_new_location}")
 
     # Always Rename the AP last .. if a new name is detected
     if ap_new_aspect and ap_new_name:
-        my_syslog.write(f"{s_NOTICE}Renaming {ap_cur_name} to {ap_new_name} based on {ap_new_aspect} match\n")
+        my_syslog.write(f"{s_NOTICE}Renaming {ap_cur_name} {ap_new_aspect} match to {ap_new_name}\n")
         time.sleep(1.001)
         cli(f"ap name {ap_cur_name} name {ap_new_name}")
 
