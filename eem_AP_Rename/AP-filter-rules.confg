@@ -1,0 +1,49 @@
+!
+wireless profile ap priming prime_EMPRIRE
+ primary VRF-demo-c9800L 198.18.250.5
+ priming-override
+ secondary DeathStar 198.18.1.1
+ tertiary Mustafar 198.18.1.2
+wireless profile ap priming prime_APFactory
+ primary VRF-demo-c9800L 198.18.250.5
+wireless profile ap priming prime_CORUSCANT
+ primary VRF-demo-c9800L 198.18.250.5
+ priming-override
+ secondary Coruscant 198.18.100.100
+wireless profile ap priming prime_REBELLION
+ primary VRF-demo-c9800L 198.18.250.5
+ priming-override
+ secondary Tatooine 198.18.80.5
+ tertiary Jakku 198.18.90.5
+ !
+
+ !
+ ap filter name flt_VRF
+ ap name-regex .*VRF.*
+ tag policy GUEST-VRF
+ tag rf rf_my-default
+ tag site st_my-default
+ap filter name flp_robots type priming
+ ap name-regex R2D2|C3PO
+ profile prime_REBELLION
+ap filter name flp_CatchAll type priming
+ ap name-regex .*
+ profile prime_CORUSCANT
+ap filter name flt-CatchAll
+ ap name-regex .*
+ tag policy pt_my-default
+ tag rf rf_my-default
+ tag site st_my-default
+ap filter name flp_APfactory type priming
+ ap name-regex ^AP[0-9A-F]{4}\.[0-9A-F]{4}\.[0-9A-F]{4}$
+ profile prime_APFactory
+ap filter name flp_DarthVader type priming
+ ap name-regex Darth[Vv]ader
+ profile prime_EMPRIRE
+ap filter priority 201 filter-name flp_robots
+ap filter priority 202 filter-name flp_DarthVader
+ap filter priority 450 filter-name flp_APfactory
+ap filter priority 460 filter-name flp_CatchAll
+ap filter priority 500 filter-name flt_VRF
+ap filter priority 1000 filter-name flt-CatchAll
+!
