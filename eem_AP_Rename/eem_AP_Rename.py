@@ -209,6 +209,13 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
         my_syslog.write(f"{s_NOTICE}Renaming {ap_cur_name} match {ap_new_aspect} to {ap_new_name}\n")
         time.sleep(1.001)
         cli(f"ap name {ap_cur_name} name {ap_new_name}")
+        # TODO workaround for AP Priming not fully triggering on name change
+        # time.sleep(5)
+        cli(f"ap tag-sources revalidate")
+        # TODO workaround for MWAR changes to AP not being updated at WLC, 10 sec is about what 9120 needs
+        time.sleep(10)
+        cli(f"ap name {ap_new_name} reset capwap")
+
 
 my_syslog.close()
 time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet

@@ -35,7 +35,7 @@ ap filter name flt-CatchAll
  tag policy pt_my-default
  tag rf rf_my-default
  tag site st_my-default
-ap filter name flp_APfactory type priming
+ap filter name flp_APFactory type priming
  ap name-regex ^AP[0-9A-F]{4}\.[0-9A-F]{4}\.[0-9A-F]{4}$
  profile prime_APFactory
 ap filter name flp_DarthVader type priming
@@ -44,7 +44,7 @@ ap filter name flp_DarthVader type priming
 !
 ap filter priority 430 filter-name flp_robots
 ap filter priority 440 filter-name flp_DarthVader
-ap filter priority 450 filter-name flp_APfactory
+ap filter priority 450 filter-name flp_APFactory
 ap filter priority 460 filter-name flp_CatchAll
 ap filter priority 500 filter-name flt_VRF
 ap filter priority 1000 filter-name flt-CatchAll
