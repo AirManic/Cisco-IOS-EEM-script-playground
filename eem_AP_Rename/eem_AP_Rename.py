@@ -210,7 +210,6 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
         time.sleep(1.001)
         cli(f"ap name {ap_cur_name} name {ap_new_name}")
         # TODO workaround for AP Priming not fully triggering on name change
-        # time.sleep(5)
         cli(f"ap tag-sources revalidate")
         # TODO workaround for MWAR changes to AP not being updated at WLC, 10 sec is about what 9120 needs
         time.sleep(10)
