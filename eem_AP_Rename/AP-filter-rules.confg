@@ -3,21 +3,18 @@
 
 !
 wireless profile ap priming prime_EMPRIRE
- primary VRF-demo-c9800L 198.18.250.5
+ primary wc-DeathStar 198.18.250.5
  priming-override
- secondary DeathStar 198.18.1.1
- tertiary Mustafar 198.18.1.2
+ secondary wc-Mustafar 198.18.250.55
 wireless profile ap priming prime_APFactory
- primary VRF-demo-c9800L 198.18.250.5
+ primary wc-DeathStar 198.18.250.5
 wireless profile ap priming prime_CORUSCANT
- primary VRF-demo-c9800L 198.18.250.5
+ primary wc-Coruscant 192.168.250.94
  priming-override
- secondary Coruscant 198.18.100.100
 wireless profile ap priming prime_REBELLION
- primary VRF-demo-c9800L 198.18.250.5
+ primary wc-Tatooine 192.168.250.98
  priming-override
- secondary Tatooine 198.18.80.5
- tertiary Jakku 198.18.90.5
+ secondary wc-Jakku 192.168.250.99
 !
 ap filter name flt_VRF
  ap name-regex .*VRF.*
@@ -41,7 +38,6 @@ ap filter name flp_APFactory type priming
 ap filter name flp_DarthVader type priming
  ap name-regex Darth[Vv]ader
  profile prime_EMPRIRE
-!
 ap filter priority 430 filter-name flp_robots
 ap filter priority 440 filter-name flp_DarthVader
 ap filter priority 450 filter-name flp_APFactory
