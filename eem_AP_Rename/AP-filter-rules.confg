@@ -61,3 +61,11 @@ ap filter priority 490 filter-name flp_CatchAll
 ap filter priority 800 filter-name flt_StarWars
 ap filter priority 1000 filter-name flt-CatchAll
 !
+
+= iPSK = https://starwars.fandom.com/wiki/Kyber_crystal
+Palpatine|DarthSidious = KyberCrimson/KyberRed
+DarthVader = KyberCrimson/KyberRed
+KyloRen = KyberRedYellow
+ObiWanKenobi = KyberBLue
+LukeSkywalker = Blue/Green
+Rey = KyberYellow
