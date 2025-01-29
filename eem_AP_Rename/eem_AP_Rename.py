@@ -42,36 +42,49 @@ example file contents (** optional 2nd field to be _location_ if -l  used
 
 guestshell run python3 /flash/guest-share/eem_AP_Rename.py -h
 Please note, this package[eem] is ONLY for EEM Python Scripts
-usage: eem_AP_Rename.py [-h] [-c CSV_INFILE] [-l]
+usage: eem_AP_Rename.py [-h] [-c CSV_INFILE] [-l] [-n NAME]
+
 optional arguments:
   -h, --help            show this help message and exit
   -c CSV_INFILE, --csv_infile CSV_INFILE
                         specify csv infile, defaults to eem_AP_Rename.csv
   -l, --location        treat 2nd csv field as location data for AP, defaults
                         to false
-
-
+  -n NAME, --name NAME  check AP name for this specific MAC address
 
 
 !
 conf t
 !
+! Basically, only fetch updated csv and python file if running on timer or manual run
+! If only getting single AP join, just check existing csv using existing python
+!  .. could only look for given syslog AP name.. but found that if a handful join in same second..
+!  .. some of the syslog messages are suppressed
+!  .. thus a bit brute force, albeit gets the job done to run repeatedly for AP join messages
 no event manager applet eem_AP_Rename
    event manager applet eem_AP_Rename
- event tag NONE none maxrun 60
- event tag CRON timer cron cron-entry "*/15 * * * *"
+ event tag CRON timer cron cron-entry "*/20 * * * *"
+ event tag NONE none maxrun 1800
+ event tag SYS syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  trigger
-  correlate event NONE or event CRON
- action 0.0 syslog msg "Started"
- action 1.0 cli command "enable"
- action 2.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/custom.csv" pattern "]"
- action 2.2 cli command "" pattern "[confirm]"
- action 2.3 cli command "y"
- action 2.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.py bootflash:/guest-share/" pattern "]"
- action 2.6 cli command "" pattern "[confirm]"
- action 2.7 cli command "y"
- action 3.0 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv"
- action 9.0 syslog msg "Finished"
+  correlate event NONE or event CRON or event SYS
+ action 000.000   syslog msg "Started $_event_type_string"
+ action 000.000.1 cli command "enable"
+ action 200.000   if $_event_type_string eq "syslog"
+ action 200.040.1  set find_ap_name "TBD"
+ action 200.040.2  regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match find_ap_name
+ action 200.070.1  cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv -n $find_ap_name"
+ action 200.070.8  syslog msg "Finished"
+ action 200.070.9  exit
+ action 200.090   end
+ action 300.020.1 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.csv bootflash:/guest-share/custom.csv" pattern "]"
+ action 300.020.2 cli command "" pattern "[confirm]"
+ action 300.020.3 cli command "y"
+ action 300.020.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.py bootflash:/guest-share/" pattern "]"
+ action 300.020.6 cli command "" pattern "[confirm]"
+ action 300.020.7 cli command "y"
+ action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv"
+ action 900.999.9 syslog msg "Finished"
 !
 end
 !
@@ -107,6 +120,8 @@ parser.add_argument('-c', '--csv_infile',type=str, required=False,
                     help=f"specify csv infile, defaults to {DEFAULT_INFILE}")
 parser.add_argument('-l', '--location', required=False, action='store_true',
                     help=f"treat 2nd csv field as location data for AP, defaults to false")
+parser.add_argument('-n', '--name', required=False,
+                    help=f"check AP name for this specific MAC address")
 args = parser.parse_args()
 
 # eem.action_syslog() appears to be not supported in 9800 IOS-XE
@@ -154,7 +169,13 @@ with open(f"/flash/guest-share/{args.csv_infile}") as csvfile:
             ap_csv_dct[csv_aspect.strip()] = ap_csv_name.strip()
 
 # Retrieve the AP list from the WLC
-ap_summary = cli("show ap summary")
+if args.name:
+    my_syslog.write(f"{s_NOTICE}Looking for {args.name}\n")
+    ap_summary = cli(f"show ap summary | inc {args.name}")
+    time.sleep(1.001)
+else:
+    ap_summary = cli(f"show ap summary")
+
 ap_list = re.findall(r'(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)\s+.*Registered\s+(.*)', ap_summary, re.MULTILINE)
 
 # Create list of aspect from the csv file to match against
@@ -207,8 +228,8 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
     # Always Rename the AP last .. if a new name is detected
     if ap_new_aspect and ap_new_name:
         my_syslog.write(f"{s_NOTICE}Renaming {ap_cur_name} match {ap_new_aspect} to {ap_new_name}\n")
-        time.sleep(1.001)
         cli(f"ap name {ap_cur_name} name {ap_new_name}")
+        time.sleep(1.001)
         # TODO workaround for AP Priming not fully triggering on name change
         cli(f"ap tag-sources revalidate")
         # TODO workaround for MWAR changes to AP not being updated at WLC, 10 sec is about what 9120 needs
