@@ -28,7 +28,7 @@ no ap filter name flp_Sith type priming
 ap filter name flp_Sith type priming
  ap name-regex Palpatine|DarthSidious|Darth[Vv]ader|Kylo[Rr]en
  profile prime_EMPRIRE
-ano p filter name flp_robots type priming
+no ap filter name flp_robots type priming
 ap filter name flp_robots type priming
  ap name-regex R2D2|C3PO
  profile prime_REBELLION
