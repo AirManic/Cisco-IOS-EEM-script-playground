@@ -229,7 +229,7 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
     if ap_new_aspect and ap_new_name:
         my_syslog.write(f"{s_NOTICE}Renaming {ap_cur_name} match {ap_new_aspect} to {ap_new_name}\n")
         cli(f"ap name {ap_cur_name} name {ap_new_name}")
-        time.sleep(1.001)
+        time.sleep(10)
         # TODO workaround for AP Priming not fully triggering on name change
         cli(f"ap tag-sources revalidate")
         # TODO workaround for MWAR changes to AP not being updated at WLC, 10 sec is about what 9120 needs
