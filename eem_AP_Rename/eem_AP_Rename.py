@@ -68,7 +68,7 @@ no event manager applet eem_AP_Rename
  event tag SYS syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  trigger
   correlate event NONE or event CRON or event SYS
- action 000.000   syslog msg "Started event was $_event_type_string"
+ action 000.000   syslog msg "Started event trigger $_event_type_string"
  action 000.000.1 cli command "enable"
  action 200.000   if $_event_type_string eq "syslog"
  action 200.040.1  set find_ap_name "TBD"
