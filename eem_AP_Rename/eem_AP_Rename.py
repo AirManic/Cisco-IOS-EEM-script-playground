@@ -63,7 +63,7 @@ conf t
 !  .. thus a bit brute force, albeit gets the job done to run repeatedly for AP join messages
 no event manager applet eem_AP_Rename
    event manager applet eem_AP_Rename
- event tag CRON timer cron cron-entry "*/20 * * * *"
+ event tag CRON timer cron cron-entry "* */2 * * *"
  event tag NONE none maxrun 1800
  event tag SYS syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  trigger
