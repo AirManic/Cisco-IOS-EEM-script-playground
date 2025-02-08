@@ -1,0 +1,16 @@
+eg/listargs.tcl
+eg/rpc.pl
+eg/rpccli.tcl
+eg/rpctcl.tcl
+lib/Cisco/EEM/RPC.pod
+lib/Cisco/EEM/RPC/Policy.pm
+lib/Cisco/EEM/RPC/Session.pm
+lib/Cisco/EEM/RPC/Transport.pm
+lib/Cisco/EEM/RPC/Transport/SSH.pm
+lib/Cisco/EEM/RPC/Transport/SSH/CiscoSSH2.pm
+LICENSE.txt
+Makefile.PL
+MANIFEST
+MANIFEST.SKIP
+README.txt
+META.yml                                 Module meta-data (added by MakeMaker)
