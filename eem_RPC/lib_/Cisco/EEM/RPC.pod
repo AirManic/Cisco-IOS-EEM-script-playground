@@ -1,0 +1,45 @@
+=head1 NAME
+
+Cisco::EEM::RPC - Perl interface to the SOAP XML-based EEM RPC
+
+=head1 SYNOPSIS
+
+	use Cisco::EEM::RPC::Policy;
+	use Cisco::EEM::RPC::Session;
+	my $policy = new Cisco::EEM::RPC::Policy($name);
+	my $rpc = new Cisco::EEM::RPC::Session($host);
+	$rpc->setTimeout(10);
+	$rpc->login($user, $pass);
+	my $result = $rpc->invoke($pol);
+	if ($result) {
+	            print "Got result: " . $rpc->getResult() . "\n";
+	} else {
+	            print "Got error: " . $rpc->getErrorCode() . ": " . $rpc->getErrorMsg() ."\n";
+	}
+	$rpc->close();
+
+=head1 DESCRIPTION
+
+The Cisco IOS Embedded Event Manager (EEM) is an infrastructure feature that
+provides unique customization capabilities and event driven automation
+within Cisco products.  EEM RPC is a SOAP XML-based remote procedure call
+system that allows one to execute EEM policies remotely and retrieve their
+results.
+
+This package provides a Perl object-oriented API to invoke policies
+using EEM RPC over a secure shell (SSH) version 2 protocol.
+
+=head1 RELATED MODULES
+
+Using the EEM RPC Perl API requires the use of the following two Perl
+modules.  Consult their associated documentation for specific usage.
+
+=over 4
+
+=item B<Cisco::EEM::RPC::Policy>
+
+=item B<Cisco::EEM::RPC::Session>
+
+=back
+
+=cut
