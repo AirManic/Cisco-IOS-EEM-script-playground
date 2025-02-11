@@ -65,9 +65,10 @@ no event manager applet eem_AP_Rename
    event manager applet eem_AP_Rename
  event tag CRON timer cron cron-entry "* */2 * * *"
  event tag NONE none maxrun 1800
- event tag SYS syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
+ event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
+ event tag SYS2 syslog pattern "APMGR_TRACE_MESSAGE-4-WLC_APMGR_WARNING_MSG.*is associated with the policy tag"
  trigger
-  correlate event NONE or event CRON or event SYS
+  correlate event NONE or event CRON or event SYS1 or event SYS2
  action 000.000   syslog msg "Started event trigger $_event_type_string"
  action 000.000.1 cli command "enable"
  action 200.000   if $_event_type_string eq "syslog"
