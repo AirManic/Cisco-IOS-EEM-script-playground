@@ -47,9 +47,10 @@ no event manager applet AP_CHECKER
  action 0000.30     cli command "term length 0"
  action 0000.40     syslog msg "Running AP_CHECKER"
  action 0000.50     if $_event_type_string eq "syslog"
- action 0000.50.1     set find_ap_name "TBD"
- action 0000.50.2     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
- action 0000.50.3     if "True" eq "True" goto 0200
+ action 0000.50.1     wait 20
+ action 0000.50.2     set ap_name "TBD"
+ action 0000.50.3     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
+ action 0000.50.4     if "True" eq "True" goto 0200
  action 0000.50.9    end
  !
  action 0000.80.1   cli command "show ap summary | inc Registered"
