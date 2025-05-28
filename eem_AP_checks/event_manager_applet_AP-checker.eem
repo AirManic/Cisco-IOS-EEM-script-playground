@@ -42,7 +42,6 @@ no event manager applet AP_CHECKER
  event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  trigger
   correlate event NONE or event CRON or event SYS1
-  correlate event NONE or event CRON
  action 0000.10     cli command "enable"
  action 0000.20     cli command "term exec prompt timestamp"
  action 0000.30     cli command "term length 0"
