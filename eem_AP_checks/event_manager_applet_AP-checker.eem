@@ -1,0 +1,101 @@
+! """
+! BSD 3-Clause License
+!
+! Copyright (c) 2024, grogier@cisco.com
+!
+! Redistribution and use in source and binary forms, with or without
+! modification, are permitted provided that the following conditions are met:
+!
+! 1. Redistributions of source code must retain the above copyright notice, this
+!    list of conditions and the following disclaimer.
+!
+! 2. Redistributions in binary form must reproduce the above copyright notice,
+!    this list of conditions and the following disclaimer in the documentation
+!    and/or other materials provided with the distribution.
+!
+! 3. Neither the name of the copyright holder nor the names of its
+!    contributors may be used to endorse or promote products derived from
+!    this software without specific prior written permission.
+!
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+! DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+! FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+! OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+!
+!
+! Cliff Notes ... pending nicer README.md
+! """
+
+!
+conf t
+!
+no event manager applet AP_CHECKER
+   event manager applet AP_CHECKER
+ event none sync yes maxrun 600
+ action 0000.10     cli command "enable"
+ action 0000.20     cli command "term exec prompt timestamp"
+ action 0000.30     cli command "term length 0"
+ action 0000.40     syslog msg "Running AP_CHECKER"
+ action 0000.50     cli command "show ap summary | inc Registered"
+ action 0000.60     set show_ap_summary $_cli_result
+ !
+ action 0100        comment Iterate across AP list
+ action 0100.10     foreach line "$show_ap_summary" "\n"
+ action 0100.20       regexp "^([^\s]+)\s" $line match ap_name
+ action 0100.30       if $_regexp_result eq "1"
+!action 0100.40         syslog msg "ap_name: $ap_name"
+!action 0100.40.0       wait 1
+ !
+ action 0200            comment Fetch cdp neighbor
+ action 0200.00         cli command "show ap name $ap_name cdp neighbors | inc Ether"
+!action 0200.09         syslog msg "Processing CDP ap_name: $ap_name == $_cli_result"
+!action 0200.09.0       wait 2
+ action 0200.10.0       regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" $_cli_result match cdp_nei_name cdp_nei_ip cdp_nei_port
+!action 0200.10.1       if $_regexp_result eq "1"
+!action 0200.10.2         syslog msg "Found CDP ap_name: $ap_name == cdp_nei_name $cdp_nei_name cdp_nei_ip $cdp_nei_ip cdp_nei_port $cdp_nei_port"
+!action 0200.10.2.0       wait 1
+!action 0200.10.9       end
+ !
+ action 0300            comment Check PoE
+ action 0300.00         cli command "show ap name $ap_name config general | inc Power Type"
+!action 0300.09         syslog msg "Processing PoE ap_name: $ap_name == $_cli_result"
+!action 0300.09.0       wait 1
+ action 0300.10.0       regexp ":\s+([^\r]+)" $_cli_result match ap_poe_mode
+ action 0300.10.1       if $_regexp_result eq "1"
+!action 0300.10.2         syslog msg "Found PoE ap_name: $ap_name == ap_poe_mode $ap_poe_mode"
+!action 0300.10.2.0       wait 1
+ action 0300.10.3.1       if $ap_poe_mode ne "PoE/Full Power"
+ action 0300.10.3.2         syslog msg "Check $ap_name for PoE $ap_poe_mode on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0300.10.3.9       end
+ action 0300.10.9       end
+ !
+ action 0400            comment Check speed/duplex
+ action 0400.00         cli command "show ap name $ap_name ethernet statistics | inc Ether.*UP"
+ action 0400.09         syslog msg "Processing speed/duplex ap_name: $ap_name == $_cli_result"
+ action 0400.09.0       wait 1
+ !
+ action 0500            comment Check radio role
+ action 0500.10         foreach slot "0 1 2"
+ action 0500.20          cli command "show ap name $ap_name config slot $slot | inc Radio Role *:"
+ action 0500.30          syslog msg "Processing RadioRole ap_name: $ap_name slot $slot == $_cli_result"
+ action 0500.30.0        wait 1
+ action 0500.90       end
+ !
+ action 0970          comment end of if $_regexp_result regexp "^([^\s]+)\s" $line match ap_name
+ action 0970.99       end
+ action 0990        comment end of foreach line "$show_ap_summary" "\n"
+ action 0990.99     end
+!
+ action 9999.99     syslog msg "Ending AP_CHECKER"
+!
+end
+!
+event manager run AP_CHECKER
+!
+

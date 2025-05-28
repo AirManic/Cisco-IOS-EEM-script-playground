@@ -1,0 +1,83 @@
+! """
+! BSD 3-Clause License
+!
+! Copyright (c) 2024, grogier@cisco.com
+!
+! Redistribution and use in source and binary forms, with or without
+! modification, are permitted provided that the following conditions are met:
+!
+! 1. Redistributions of source code must retain the above copyright notice, this
+!    list of conditions and the following disclaimer.
+!
+! 2. Redistributions in binary form must reproduce the above copyright notice,
+!    this list of conditions and the following disclaimer in the documentation
+!    and/or other materials provided with the distribution.
+!
+! 3. Neither the name of the copyright holder nor the names of its
+!    contributors may be used to endorse or promote products derived from
+!    this software without specific prior written permission.
+!
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+! DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+! FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+! OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+!
+!
+! Cliff Notes ... pending nicer README.md
+! """
+
+!
+conf t
+!
+
+!
+no event manager applet SEQUENCE-AP
+   event manager applet SEQUENCE-AP
+ event none sync yes maxrun 180
+ action 0051 cli command "enable"
+ action 0052 cli command "term exec prompt timestamp"
+ action 0053 cli command "term length 0"
+ action 0070 syslog msg "interface range GigabitEthernet0/1-7 power inline never"
+ action 0071 cli command "conf t"
+ action 0072 cli command "interface range GigabitEthernet0/1-7"
+ action 0073 cli command " power inline never"
+ action 0079 cli command "end"
+ action 0100 info type interface-names regexp "Gi.*\/[1234567]$"
+ action 0102 syslog msg "interface list is $_info_interface_names"
+ action 0103 foreach _iface "$_info_interface_names"
+ action 0104  syslog msg "interface $_iface power inline auto"
+ action 0105  cli command "conf t"
+ action 0120  cli command "interface $_iface"
+ action 0121  cli command " power inline auto"
+ action 0125  cli command "end"
+ action 0148  wait 10
+ action 0149 end
+ action 0199 exit
+ action 0200 info type interface-names regexp "Gi.*\/[5]$"
+ action 0202 syslog msg "interface list is $_info_interface_names"
+ action 0203 foreach _iface "$_info_interface_names"
+ action 0204  syslog msg "interface $_iface power inline auto"
+ action 0205  cli command "conf t"
+ action 0220  cli command "interface $_iface"
+ action 0221  cli command " power inline static max 15400"
+ action 0225  cli command "end"
+ action 0248  wait 10
+ action 0249 end
+ action 147  exit
+!
+
+!
+no event manager applet SEQUENCE-AP-ON-BOOT
+   event manager applet SEQUENCE-AP-ON-BOOT
+ event timer countdown time 5 maxrun 180
+ action 0051 cli command "enable"
+ action 0052 cli command "event manager run SEQUENCE-AP"
+!
+end
+!
