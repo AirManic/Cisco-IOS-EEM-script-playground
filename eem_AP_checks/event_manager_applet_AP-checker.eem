@@ -40,16 +40,21 @@ no event manager applet AP_CHECKER
  event tag NONE none sync yes maxrun 600
  event tag CRON timer cron cron-entry "*/20 * * * *"
  event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
- event tag SYS2 syslog pattern "APMGR_TRACE_MESSAGE-4-WLC_APMGR_WARNING_MSG.*is associated with the policy tag"
  trigger
-  correlate event NONE or event CRON or event SYS1 or event SYS2
+  correlate event NONE or event CRON or event SYS1
   correlate event NONE or event CRON
  action 0000.10     cli command "enable"
  action 0000.20     cli command "term exec prompt timestamp"
  action 0000.30     cli command "term length 0"
  action 0000.40     syslog msg "Running AP_CHECKER"
- action 0000.50     cli command "show ap summary | inc Registered"
- action 0000.60     set show_ap_summary $_cli_result
+ action 0000.50     if $_event_type_string eq "syslog"
+ action 0000.50.1     set find_ap_name "TBD"
+ action 0000.50.2     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
+ action 0000.50.3     if "True" eq "True" goto 0200
+ action 0000.50.9    end
+ !
+ action 0000.80.1   cli command "show ap summary | inc Registered"
+ action 0000.80.2   set show_ap_summary $_cli_result
  !
  action 0100        comment Iterate across AP list
  action 0100.10     foreach line "$show_ap_summary" "\n"
