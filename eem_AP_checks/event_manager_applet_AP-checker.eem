@@ -80,14 +80,17 @@ no event manager applet AP_CHECKER
  action 0100.10     foreach ap_name "$ap_list"
  !
  action 0200            comment Fetch cdp neighbor
- action 0200.00         cli command "show ap name $ap_name cdp neighbors | inc Ether"
-!action 0200.09         syslog msg "Processing CDP ap_name: $ap_name == $_cli_result"
-!action 0200.09.0       wait 1
+ action 0200.00.1       set cdp_nei_name ""
+ action 0200.00.2       set cdp_nei_ip ""
+ action 0200.00.3       set cdp_nei_port ""
+ action 0200.01         cli command "show ap name $ap_name cdp neighbors | inc Ether"
+!action 0200.02         syslog msg "Processing CDP ap_name: $ap_name == $_cli_result"
+!action 0200.02.0       wait 1
  action 0200.10.0       regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" $_cli_result match cdp_nei_name cdp_nei_ip cdp_nei_port
-!action 0200.10.1       if $_regexp_result eq "1"
+ action 0200.10.1       if $_regexp_result eq "1"
 !action 0200.10.2         syslog msg "Found CDP ap_name: $ap_name == cdp_nei_name $cdp_nei_name cdp_nei_ip $cdp_nei_ip cdp_nei_port $cdp_nei_port"
 !action 0200.10.2.0       wait 1
-!action 0200.10.9       end
+ action 0200.10.9       end
  !
  action 0300            comment Check PoE
  action 0300.00         cli command "show ap name $ap_name config general | inc Power Type"
