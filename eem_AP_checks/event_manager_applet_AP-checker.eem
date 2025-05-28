@@ -51,9 +51,9 @@ no event manager applet AP_CHECKER
  action 0000.50     if $_event_type_string eq "syslog"
  action 0000.50.2     set ap_name ""
  action 0000.50.3     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
- action 0000.50.4     syslog msg "Running AP_CHECKER $_event_type_string .. for $ap_name"
- action 0000.50.5     wait 1
- action 0000.50.6     set ap_list "$ap_list $ap_name"
+ action 0000.50.4.0   syslog msg "Running AP_CHECKER $_event_type_string .. for $ap_name"
+ action 0000.50.4.1     wait 1
+ action 0000.50.5     set ap_list "$ap_name"
  !
  action 0000.60     else
  action 0000.60.0     syslog msg "Running AP_CHECKER $_event_type_string .. for show ap summary"
@@ -98,19 +98,19 @@ no event manager applet AP_CHECKER
 !action 0300.10.2         syslog msg "Found PoE ap_name: $ap_name == ap_poe_mode $ap_poe_mode"
 !action 0300.10.2.0       wait 1
  action 0300.10.3.1       if $ap_poe_mode ne "PoE/Full Power"
- action 0300.10.3.2         syslog msg "Check $ap_name for PoE $ap_poe_mode on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
- action 0300.10.3.2.0       wait 1
+ action 0300.10.3.2.0       syslog msg "Check $ap_name for PoE $ap_poe_mode on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0300.10.3.2.1       wait 1
  action 0300.10.3.9       end
  action 0300.10.9       end
  !
  action 0400            comment Check speed/duplex
  action 0400.00         cli command "show ap name $ap_name ethernet statistics | inc Ether.*UP"
-!action 0400.09         syslog msg "Processing speed/duplex ap_name: $ap_name == $_cli_result"
-!action 0400.09.0       wait 1
+!action 0400.09.0       syslog msg "Processing speed/duplex ap_name: $ap_name == $_cli_result"
+!action 0400.09.1       wait 1
  action 0400.10.0       regexp ".*Ether.*UP\s+([^\s]+\s+Mbps)\s+([^\s]+)" $_cli_result match ap_speed ap_duplex
  action 0400.10.1       if $_regexp_result eq "1"
-!action 0400.10.2         syslog msg "Found SpeedDuplex ap_name: $ap_name == ap_speed $ap_speed ap_duplex $ap_duplex"
-!action 0400.10.2.0       wait 1
+!action 0400.10.2.0       syslog msg "Found SpeedDuplex ap_name: $ap_name == ap_speed $ap_speed ap_duplex $ap_duplex"
+!action 0400.10.2.1       wait 1
  !
  action 0400.10.3.1       set ap_speed_duplex_chk "True"
  !
@@ -129,23 +129,23 @@ no event manager applet AP_CHECKER
  action 0400.10.3.5.3     end
  !
  action 0400.10.3.9.1     if $ap_speed_duplex_chk ne "False"
- action 0400.10.3.9.2       syslog msg "Check $ap_name for Speed/Duplex $ap_speed/$ap_duplex on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
- action 0400.10.3.9.2.0     wait 1
+ action 0400.10.3.9.2.0     syslog msg "Check $ap_name for Speed/Duplex $ap_speed/$ap_duplex on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0400.10.3.9.2.1     wait 1
  action 0400.10.3.9.3     end
  action 0400.10.9       end
  !
  action 0500            comment Check radio role
  action 0500.10         foreach slot "0 1 2"
  action 0500.20           cli command "show ap name $ap_name config slot $slot | inc Radio Role *:"
-!action 0500.30           syslog msg "Processing RadioRole ap_name: $ap_name slot $slot == $_cli_result"
-!action 0500.30.0         wait 1
+!action 0500.30.0         syslog msg "Processing RadioRole ap_name: $ap_name slot $slot == $_cli_result"
+!action 0500.30.1         wait 1
  action 0500.40.0         regexp ":\s+([^\r]+)" $_cli_result match ap_radio_role
  action 0500.40.1         if $_regexp_result eq "1"
-!action 0500.40.2           syslog msg "Found RadioRole ap_name slot $slot: $ap_name == ap_radio_role $ap_radio_role"
-!action 0500.40.2.0         wait 1
+!action 0500.40.2.0         syslog msg "Found RadioRole ap_name slot $slot: $ap_name == ap_radio_role $ap_radio_role"
+!action 0500.40.2.1         wait 1
  action 0500.40.3.1         if $ap_radio_role ne "Client Serving"
- action 0500.40.3.2           syslog msg "Check $ap_name slot $slot for RadioRole $ap_radio_role"
- action 0500.40.3.2.0         wait 1
+ action 0500.40.3.2.0         syslog msg "Check $ap_name slot $slot for RadioRole $ap_radio_role"
+ action 0500.40.3.2.1         wait 1
  action 0500.40.3.9         end
  action 0500.40.9         end
  action 0500.90         end
