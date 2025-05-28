@@ -156,7 +156,14 @@ no event manager applet AP_CHECKER
  action 0990        comment end of foreach ap_name "$ap_list"
  action 0990.99     end
 !
- action 9999.99     syslog msg "Ending AP_CHECKER"
+
+ action 9999.99.1   if $_event_type_string eq "syslog"
+ action 9999.99.2      syslog msg "Ending AP_CHECKER $_event_type_string .. for $ap_name"
+ action 9999.99.3   else
+ action 9999.99.4      syslog msg "Ending AP_CHECKER $_event_type_string .. for show ap summary"
+ action 9999.99.5   end
+
+
 !
 end
 !
