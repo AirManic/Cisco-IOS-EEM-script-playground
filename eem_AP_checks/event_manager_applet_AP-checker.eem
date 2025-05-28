@@ -137,8 +137,6 @@ no event manager applet AP_CHECKER
  action 0400.10.3.9.3     end
  action 0400.10.9       end
  !
- ! test
- !
  action 0500            comment Check radio role
  action 0500.10         foreach slot "0 1 2"
  action 0500.20           cli command "show ap name $ap_name config slot $slot | inc Radio Role *:"
