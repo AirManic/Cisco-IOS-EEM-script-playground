@@ -41,28 +41,37 @@ no event manager applet AP_CHECKER
  event tag CRON timer cron cron-entry "*/20 * * * *"
  event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  trigger
- ! TODO correlate event NONE or event CRON or event SYS1
-  correlate event NONE or event CRON
+  correlate event NONE or event CRON or event SYS1
  action 0000.10     cli command "enable"
  action 0000.20     cli command "term exec prompt timestamp"
  action 0000.30     cli command "term length 0"
- action 0000.40     syslog msg "Running AP_CHECKER"
- action 0000.50     if $_event_type_string eq "syslog"
- action 0000.50.1     wait 20
- action 0000.50.2     set ap_name "TBD"
- action 0000.50.3     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
- action 0000.50.4     if "True" eq "True" goto 0200
- action 0000.50.9    end
  !
- action 0000.80.1   cli command "show ap summary | inc Registered"
- action 0000.80.2   set show_ap_summary $_cli_result
+ action 0000.40     set ap_list ""
+ !
+ action 0000.50     if $_event_type_string eq "syslog"
+ action 0000.50.2     set ap_name ""
+ action 0000.50.3     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
+ action 0000.50.4     syslog msg "Running AP_CHECKER .. for $ap_name"
+ action 0000.50.5     set ap_list "$ap_list $ap_name"
+ !
+ action 0000.60     else
+ action 0000.60.0     syslog msg "Running AP_CHECKER .. for show ap summary"
+ action 0000.60.1     cli command "show ap summary | inc Registered"
+ action 0000.60.2     set show_ap_summary $_cli_result
+ action 0000.60.3     foreach line "$show_ap_summary" "\n"
+ action 0000.60.31      regexp "^([^\s]+)\s" $line match ap_name
+ action 0000.60.32      if $_regexp_result eq "1"
+ action 0000.60.33        set ap_list "$ap_list $ap_name"
+ action 0000.60.34        syslog msg "ap_name: $ap_name"
+ action 0000.60.35        wait 1
+ action 0000.60.39      end
+ action 0000.69       end
+ !
+ action 0000.80       syslog msg "ap_list: $ap_list"
+ action 0000.90     end
  !
  action 0100        comment Iterate across AP list
- action 0100.10     foreach line "$show_ap_summary" "\n"
- action 0100.20       regexp "^([^\s]+)\s" $line match ap_name
- action 0100.30       if $_regexp_result eq "1"
-!action 0100.40         syslog msg "ap_name: $ap_name"
-!action 0100.40.0       wait 1
+ action 0100.10     foreach ap_name "$ap_list"
  !
  action 0200            comment Fetch cdp neighbor
  action 0200.00         cli command "show ap name $ap_name cdp neighbors | inc Ether"
@@ -135,9 +144,7 @@ no event manager applet AP_CHECKER
  action 0500.40.9         end
  action 0500.90         end
  !
- action 0970          comment end of if $_regexp_result regexp "^([^\s]+)\s" $line match ap_name
- action 0970.99       end
- action 0990        comment end of foreach line "$show_ap_summary" "\n"
+ action 0990        comment end of foreach ap_name "$ap_list"
  action 0990.99     end
 !
  action 9999.99     syslog msg "Ending AP_CHECKER"
