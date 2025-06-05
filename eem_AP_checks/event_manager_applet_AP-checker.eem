@@ -35,138 +35,207 @@
 !
 conf t
 !
-no event manager applet AP_CHECKER
-   event manager applet AP_CHECKER
- event tag NONE none sync yes maxrun 600
- event tag CRON timer cron cron-entry "*/20 * * * *"
+
+!
+!
+no event manager applet AP_CHECKER_POE
+   event manager applet AP_CHECKER_POE
+ event tag CRON timer cron cron-entry "5 */4 * * *"
+ event tag NONE none sync yes maxrun 14400
  event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  trigger
   correlate event NONE or event CRON or event SYS1
- action 0000.10     cli command "enable"
- action 0000.20     cli command "term exec prompt timestamp"
- action 0000.30     cli command "term length 0"
- !
- action 0000.40     set ap_list ""
- !
- action 0000.50     if $_event_type_string eq "syslog"
- action 0000.50.2     set ap_name ""
- action 0000.50.3     regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
- action 0000.50.4.0   syslog msg "Running AP_CHECKER $_event_type_string .. for $ap_name"
- action 0000.50.4.1     wait 1
- action 0000.50.5     set ap_list "$ap_name"
- !
- action 0000.60     else
- action 0000.60.0     syslog msg "Running AP_CHECKER $_event_type_string .. for show ap summary"
- action 0000.60.1     wait 1
- action 0000.60.2     cli command "show ap summary | inc Registered"
- action 0000.60.3     set show_ap_summary $_cli_result
- action 0000.60.4     foreach line "$show_ap_summary" "\n"
- action 0000.60.41      regexp "^([^\s]+)\s" $line match ap_name
+ action 0000.10       cli command "enable"
+ action 0000.20       cli command "term exec prompt timestamp"
+ action 0000.30       cli command "term length 0"
+ action 0000.40       set ap_list ""
+ action 0000.50       if $_event_type_string eq "syslog"
+ action 0000.50.2      set ap_name ""
+ action 0000.50.3      regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
+ action 0000.50.4.0    syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
+ action 0000.50.4.1    wait 1
+ action 0000.50.5      set ap_list "$ap_name"
+ action 0000.60       else
+ action 0000.60.0      syslog msg "[] Running $_event_type_string .. for show ap summary"
+ action 0000.60.1      wait 1
+ action 0000.60.2      cli command "show ap summary | inc Registered"
+ action 0000.60.3      set show_ap_summary "$_cli_result"
+ action 0000.60.4      foreach line "$show_ap_summary" "\n"
+ action 0000.60.41      regexp "^([^\s]+)\s" "$line" match ap_name
  action 0000.60.42      if $_regexp_result eq "1"
- action 0000.60.43        string trim "$ap_list"
- action 0000.60.44        set ap_list $_string_result
- action 0000.60.45        set ap_list "$ap_list $ap_name"
-!action 0000.60.46        syslog msg "ap_name: $ap_name"
-!action 0000.60.47        wait 1
+ action 0000.60.43       string trim "$ap_list"
+ action 0000.60.44       set ap_list "$_string_result"
+ action 0000.60.45       set ap_list "$ap_list $ap_name"
  action 0000.60.49      end
- action 0000.69       end
- !
-!action 0000.80.1     syslog msg "ap_list: $ap_list"
-!action 0000.80.2     wait 1
-
- action 0000.90     end
- !
- action 0100        comment Iterate across AP list
- action 0100.10     foreach ap_name "$ap_list"
- !
- action 0200            comment Fetch cdp neighbor
- action 0200.00.1       set cdp_nei_name ""
- action 0200.00.2       set cdp_nei_ip ""
- action 0200.00.3       set cdp_nei_port ""
- action 0200.01         cli command "show ap name $ap_name cdp neighbors | inc Ether"
-!action 0200.02         syslog msg "Processing CDP ap_name: $ap_name == $_cli_result"
-!action 0200.02.0       wait 1
- action 0200.10.0       regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" $_cli_result match cdp_nei_name cdp_nei_ip cdp_nei_port
- action 0200.10.1       if $_regexp_result eq "1"
-!action 0200.10.2         syslog msg "Found CDP ap_name: $ap_name == cdp_nei_name $cdp_nei_name cdp_nei_ip $cdp_nei_ip cdp_nei_port $cdp_nei_port"
-!action 0200.10.2.0       wait 1
- action 0200.10.9       end
- !
- action 0300            comment Check PoE
- action 0300.00         cli command "show ap name $ap_name config general | inc Power Type"
-!action 0300.09         syslog msg "Processing PoE ap_name: $ap_name == $_cli_result"
-!action 0300.09.0       wait 1
- action 0300.10.0       regexp ":\s+([^\r]+)" $_cli_result match ap_poe_mode
- action 0300.10.1       if $_regexp_result eq "1"
-!action 0300.10.2         syslog msg "Found PoE ap_name: $ap_name == ap_poe_mode $ap_poe_mode"
-!action 0300.10.2.0       wait 1
- action 0300.10.3.1       if $ap_poe_mode ne "PoE/Full Power"
- action 0300.10.3.2.0       syslog msg "Check $ap_name for PoE $ap_poe_mode on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
- action 0300.10.3.2.1       wait 1
- action 0300.10.3.9       end
- action 0300.10.9       end
- !
- action 0400            comment Check speed/duplex
- action 0400.00         cli command "show ap name $ap_name ethernet statistics | inc Ether.*UP"
-!action 0400.09.0       syslog msg "Processing speed/duplex ap_name: $ap_name == $_cli_result"
-!action 0400.09.1       wait 1
- action 0400.10.0       regexp ".*Ether.*UP\s+([^\s]+\s+Mbps)\s+([^\s]+)" $_cli_result match ap_speed ap_duplex
- action 0400.10.1       if $_regexp_result eq "1"
-!action 0400.10.2.0       syslog msg "Found SpeedDuplex ap_name: $ap_name == ap_speed $ap_speed ap_duplex $ap_duplex"
-!action 0400.10.2.1       wait 1
- !
+ action 0000.69        end
+ action 0000.90       end
+ action 0100          comment Iterate across AP list
+ action 0100.10       foreach ap_name "$ap_list"
+ action 0200           comment Fetch cdp neighbor
+ action 0200.00.1      set cdp_nei_name ""
+ action 0200.00.2      set cdp_nei_ip ""
+ action 0200.00.3      set cdp_nei_port ""
+ action 0200.01        cli command "show ap name $ap_name cdp neighbors | inc Ether"
+ action 0200.10.0      regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" "$_cli_result" match cdp_nei_name cdp_nei_ip cdp_nei_port
+ action 0200.10.1      if $_regexp_result eq "1"
+ action 0200.10.9      end
+ action 0300           comment Check PoE
+ action 0300.00        cli command "show ap name $ap_name config general | inc Power Type"
+ action 0300.10.0      regexp ":\s+([^\r]+)" "$_cli_result" match ap_poe_mode
+ action 0300.10.1      if $_regexp_result eq "1"
+ action 0300.10.3.1     if $ap_poe_mode ne "PoE/Full Power"
+ action 0300.10.3.2.0    syslog msg "[$ap_name] Check poe $ap_poe_mode on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0300.10.3.2.1    wait 1
+ action 0300.10.3.9     end
+ action 0300.10.9      end
+ action 0990           comment end of foreach ap_name "$ap_list"
+ action 0990.99       end
+ action 9999.99.1     if $_event_type_string eq "syslog"
+ action 9999.99.2      syslog msg "[$ap_name] Ending $_event_type_string .. for single AP"
+ action 9999.99.3     else
+ action 9999.99.4      syslog msg "[] Ending $_event_type_string .. for show ap summary"
+ action 9999.99.5     end
+!
+!
+no event manager applet AP_CHECKER_SPEED_DUPLEX
+   event manager applet AP_CHECKER_SPEED_DUPLEX
+ event tag CRON timer cron cron-entry "5 */4 * * *"
+ event tag NONE none sync yes maxrun 14400
+ event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
+ trigger
+  correlate event NONE or event CRON or event SYS1
+ action 0000.10         cli command "enable"
+ action 0000.20         cli command "term exec prompt timestamp"
+ action 0000.30         cli command "term length 0"
+ action 0000.40         set ap_list ""
+ action 0000.50         if $_event_type_string eq "syslog"
+ action 0000.50.2        set ap_name ""
+ action 0000.50.3        regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
+ action 0000.50.4.0      syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
+ action 0000.50.4.1      wait 1
+ action 0000.50.5        set ap_list "$ap_name"
+ action 0000.60         else
+ action 0000.60.0        syslog msg "[] Running $_event_type_string .. for show ap summary"
+ action 0000.60.1        wait 1
+ action 0000.60.2        cli command "show ap summary | inc Registered"
+ action 0000.60.3        set show_ap_summary "$_cli_result"
+ action 0000.60.4        foreach line "$show_ap_summary" "\n"
+ action 0000.60.41        regexp "^([^\s]+)\s" "$line" match ap_name
+ action 0000.60.42        if $_regexp_result eq "1"
+ action 0000.60.43         string trim "$ap_list"
+ action 0000.60.44         set ap_list "$_string_result"
+ action 0000.60.45         set ap_list "$ap_list $ap_name"
+ action 0000.60.49        end
+ action 0000.69          end
+ action 0000.90         end
+ action 0100            comment Iterate across AP list
+ action 0100.10         foreach ap_name "$ap_list"
+ action 0200             comment Fetch cdp neighbor
+ action 0200.00.1        set cdp_nei_name ""
+ action 0200.00.2        set cdp_nei_ip ""
+ action 0200.00.3        set cdp_nei_port ""
+ action 0200.01          cli command "show ap name $ap_name cdp neighbors | inc Ether"
+ action 0200.10.0        regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" "$_cli_result" match cdp_nei_name cdp_nei_ip cdp_nei_port
+ action 0200.10.1        if $_regexp_result eq "1"
+ action 0200.10.9        end
+ action 0400             comment Check speed/duplex
+ action 0400.00          cli command "show ap name $ap_name ethernet statistics | inc Ether.*UP"
+ action 0400.10.0        regexp ".*Ether.*UP\s+([^\s]+\s+Mbps)\s+([^\s]+)" "$_cli_result" match ap_speed ap_duplex
+ action 0400.10.1        if $_regexp_result eq "1"
  action 0400.10.3.1       set ap_speed_duplex_chk "True"
- !
  action 0400.10.3.1.1     if $ap_speed eq "1000 Mbps"
- action 0400.10.3.1.2       set ap_speed_duplex_chk "False"
+ action 0400.10.3.1.2      set ap_speed_duplex_chk "False"
  action 0400.10.3.1.3     end
  action 0400.10.3.2.1     if $ap_speed eq "2500 Mbps"
- action 0400.10.3.2.2       set ap_speed_duplex_chk "False"
+ action 0400.10.3.2.2      set ap_speed_duplex_chk "False"
  action 0400.10.3.2.3     end
  action 0400.10.3.3.1     if $ap_speed eq "5000 Mbps"
- action 0400.10.3.3.2       set ap_speed_duplex_chk "False"
+ action 0400.10.3.3.2      set ap_speed_duplex_chk "False"
  action 0400.10.3.3.3     end
- !
  action 0400.10.3.5.1     if $ap_duplex ne "Full"
- action 0400.10.3.5.2       set ap_speed_duplex_chk "True"
+ action 0400.10.3.5.2      set ap_speed_duplex_chk "True"
  action 0400.10.3.5.3     end
- !
  action 0400.10.3.9.1     if $ap_speed_duplex_chk ne "False"
- action 0400.10.3.9.2.0     syslog msg "Check $ap_name for Speed/Duplex $ap_speed/$ap_duplex on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
- action 0400.10.3.9.2.1     wait 1
+ action 0400.10.3.9.2.0    syslog msg "[$ap_name] Check speed/duplex $ap_speed/$ap_duplex on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0400.10.3.9.2.1    wait 1
  action 0400.10.3.9.3     end
- action 0400.10.9       end
- !
- action 0500            comment Check radio role
- action 0500.10         foreach slot "0 1 2"
- action 0500.20           cli command "show ap name $ap_name config slot $slot | inc Radio Role *:"
-!action 0500.30.0         syslog msg "Processing RadioRole ap_name: $ap_name slot $slot == $_cli_result"
-!action 0500.30.1         wait 1
- action 0500.40.0         regexp ":\s+([^\r]+)" $_cli_result match ap_radio_role
- action 0500.40.1         if $_regexp_result eq "1"
-!action 0500.40.2.0         syslog msg "Found RadioRole ap_name slot $slot: $ap_name == ap_radio_role $ap_radio_role"
-!action 0500.40.2.1         wait 1
- action 0500.40.3.1         if $ap_radio_role ne "Client Serving"
- action 0500.40.3.2.0         syslog msg "Check $ap_name slot $slot for RadioRole $ap_radio_role"
- action 0500.40.3.2.1         wait 1
- action 0500.40.3.9         end
- action 0500.40.9         end
- action 0500.90         end
- !
- action 0990        comment end of foreach ap_name "$ap_list"
- action 0990.99     end
+ action 0400.10.9        end
+ action 0990             comment end of foreach ap_name "$ap_list"
+ action 0990.99         end
+ action 9999.99.1       if $_event_type_string eq "syslog"
+ action 9999.99.2        syslog msg "[$ap_name] Ending $_event_type_string .. for single AP"
+ action 9999.99.3       else
+ action 9999.99.4        syslog msg "[] Ending $_event_type_string .. for show ap summary"
+ action 9999.99.5       end
 !
-
- action 9999.99.1   if $_event_type_string eq "syslog"
- action 9999.99.2      syslog msg "Ending AP_CHECKER $_event_type_string .. for $ap_name"
- action 9999.99.3   else
- action 9999.99.4      syslog msg "Ending AP_CHECKER $_event_type_string .. for show ap summary"
- action 9999.99.5   end
-
+!
+no event manager applet AP_CHECKER_RADIO_ROLE
+   event manager applet AP_CHECKER_RADIO_ROLE
+ event tag CRON timer cron cron-entry "5 */4 * * *"
+ event tag NONE none sync yes maxrun 14400
+ event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
+ trigger
+  correlate event NONE or event CRON or event SYS1
+ action 0000.10       cli command "enable"
+ action 0000.20       cli command "term exec prompt timestamp"
+ action 0000.30       cli command "term length 0"
+ action 0000.40       set ap_list ""
+ action 0000.50       if $_event_type_string eq "syslog"
+ action 0000.50.2      set ap_name ""
+ action 0000.50.3      regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
+ action 0000.50.4.0    syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
+ action 0000.50.4.1    wait 1
+ action 0000.50.5      set ap_list "$ap_name"
+ action 0000.60       else
+ action 0000.60.0      syslog msg "[] Running $_event_type_string .. for show ap summary"
+ action 0000.60.1      wait 1
+ action 0000.60.2      cli command "show ap summary | inc Registered"
+ action 0000.60.3      set show_ap_summary "$_cli_result"
+ action 0000.60.4      foreach line "$show_ap_summary" "\n"
+ action 0000.60.41      regexp "^([^\s]+)\s" "$line" match ap_name
+ action 0000.60.42      if $_regexp_result eq "1"
+ action 0000.60.43       string trim "$ap_list"
+ action 0000.60.44       set ap_list "$_string_result"
+ action 0000.60.45       set ap_list "$ap_list $ap_name"
+ action 0000.60.49      end
+ action 0000.69        end
+ action 0000.90       end
+ action 0100          comment Iterate across AP list
+ action 0100.10       foreach ap_name "$ap_list"
+ action 0200           comment Fetch cdp neighbor
+ action 0200.00.1      set cdp_nei_name ""
+ action 0200.00.2      set cdp_nei_ip ""
+ action 0200.00.3      set cdp_nei_port ""
+ action 0200.01        cli command "show ap name $ap_name cdp neighbors | inc Ether"
+ action 0200.10.0      regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" "$_cli_result" match cdp_nei_name cdp_nei_ip cdp_nei_port
+ action 0200.10.1      if $_regexp_result eq "1"
+ action 0200.10.9      end
+ action 0500           comment Check radio role
+ action 0500.10        foreach slot "0 1 2"
+ action 0500.20         cli command "show ap name $ap_name config slot $slot | inc Radio Role *:"
+ action 0500.40.0       regexp ":\s+([^\r]+)" "$_cli_result" match ap_radio_role
+ action 0500.40.1       if $_regexp_result eq "1"
+ action 0500.40.3.1      if $ap_radio_role ne "Client Serving"
+ action 0500.40.3.2.0     syslog msg "[$ap_name] Check slot $slot for radio role $ap_radio_role"
+ action 0500.40.3.2.1     wait 1
+ action 0500.40.3.9      end
+ action 0500.40.9       end
+ action 0500.90        end
+ action 0990           comment end of foreach ap_name "$ap_list"
+ action 0990.99       end
+ action 9999.99.1     if $_event_type_string eq "syslog"
+ action 9999.99.2      syslog msg "[$ap_name] Ending $_event_type_string .. for single AP"
+ action 9999.99.3     else
+ action 9999.99.4      syslog msg "[] Ending $_event_type_string .. for show ap summary"
+ action 9999.99.5     end
+!
+!
 
 !
 end
 !
-event manager run AP_CHECKER
+event manager run AP_CHECKER_POE
+event manager run AP_CHECKER_SPEED_DUPLEX
+event manager run AP_CHECKER_RADIO_ROLE
 !
 
