@@ -53,7 +53,8 @@ no event manager applet AP_CHECKER_POE
  action 0000.50.2      set ap_name ""
  action 0000.50.3      regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
  action 0000.50.4.0    syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
- action 0000.50.4.1    wait 2
+ action 0000.50.4.1    comment .. wait 2 sec after syslog, as IOS-XE rate limits to like 1 sec only for given syslog flow
+ action 0000.50.4.2    wait 2
  action 0000.50.5      set ap_list "$ap_name"
  action 0000.60       else
  action 0000.60.0      syslog msg "[] Running $_event_type_string .. for show ap summary"
@@ -112,7 +113,8 @@ no event manager applet AP_CHECKER_SPEED_DUPLEX
  action 0000.50.2        set ap_name ""
  action 0000.50.3        regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
  action 0000.50.4.0      syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
- action 0000.50.4.1      wait 2
+ action 0000.50.4.1    comment .. wait 2 sec after syslog, as IOS-XE rate limits to like 1 sec only for given syslog flow
+ action 0000.50.4.2      wait 2
  action 0000.50.5        set ap_list "$ap_name"
  action 0000.60         else
  action 0000.60.0        syslog msg "[] Running $_event_type_string .. for show ap summary"
@@ -184,7 +186,8 @@ no event manager applet AP_CHECKER_RADIO_ROLE
  action 0000.50.2      set ap_name ""
  action 0000.50.3      regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
  action 0000.50.4.0    syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
- action 0000.50.4.1    wait 2
+ action 0000.50.4.1    comment .. wait 2 sec after syslog, as IOS-XE rate limits to like 1 sec only for given syslog flow
+ action 0000.50.4.2    wait 2
  action 0000.50.5      set ap_list "$ap_name"
  action 0000.60       else
  action 0000.60.0      syslog msg "[] Running $_event_type_string .. for show ap summary"
