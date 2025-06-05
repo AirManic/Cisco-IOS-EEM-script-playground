@@ -53,11 +53,11 @@ no event manager applet AP_CHECKER_POE
  action 0000.50.2      set ap_name ""
  action 0000.50.3      regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
  action 0000.50.4.0    syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
- action 0000.50.4.1    wait 1
+ action 0000.50.4.1    wait 2
  action 0000.50.5      set ap_list "$ap_name"
  action 0000.60       else
  action 0000.60.0      syslog msg "[] Running $_event_type_string .. for show ap summary"
- action 0000.60.1      wait 1
+ action 0000.60.1      wait 2
  action 0000.60.2      cli command "show ap summary | inc Registered"
  action 0000.60.3      set show_ap_summary "$_cli_result"
  action 0000.60.4      foreach line "$show_ap_summary" "\n"
@@ -85,7 +85,7 @@ no event manager applet AP_CHECKER_POE
  action 0300.10.1      if $_regexp_result eq "1"
  action 0300.10.3.1     if $ap_poe_mode ne "PoE/Full Power"
  action 0300.10.3.2.0    syslog msg "[$ap_name] Check poe $ap_poe_mode on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
- action 0300.10.3.2.1    wait 1
+ action 0300.10.3.2.1    wait 2
  action 0300.10.3.9     end
  action 0300.10.9      end
  action 0990           comment end of foreach ap_name "$ap_list"
@@ -112,11 +112,11 @@ no event manager applet AP_CHECKER_SPEED_DUPLEX
  action 0000.50.2        set ap_name ""
  action 0000.50.3        regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
  action 0000.50.4.0      syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
- action 0000.50.4.1      wait 1
+ action 0000.50.4.1      wait 2
  action 0000.50.5        set ap_list "$ap_name"
  action 0000.60         else
  action 0000.60.0        syslog msg "[] Running $_event_type_string .. for show ap summary"
- action 0000.60.1        wait 1
+ action 0000.60.1        wait 2
  action 0000.60.2        cli command "show ap summary | inc Registered"
  action 0000.60.3        set show_ap_summary "$_cli_result"
  action 0000.60.4        foreach line "$show_ap_summary" "\n"
@@ -157,7 +157,7 @@ no event manager applet AP_CHECKER_SPEED_DUPLEX
  action 0400.10.3.5.3     end
  action 0400.10.3.9.1     if $ap_speed_duplex_chk ne "False"
  action 0400.10.3.9.2.0    syslog msg "[$ap_name] Check speed/duplex $ap_speed/$ap_duplex on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
- action 0400.10.3.9.2.1    wait 1
+ action 0400.10.3.9.2.1    wait 2
  action 0400.10.3.9.3     end
  action 0400.10.9        end
  action 0990             comment end of foreach ap_name "$ap_list"
@@ -184,11 +184,11 @@ no event manager applet AP_CHECKER_RADIO_ROLE
  action 0000.50.2      set ap_name ""
  action 0000.50.3      regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match ap_name
  action 0000.50.4.0    syslog msg "[$ap_name] Running $_event_type_string .. for single AP Join"
- action 0000.50.4.1    wait 1
+ action 0000.50.4.1    wait 2
  action 0000.50.5      set ap_list "$ap_name"
  action 0000.60       else
  action 0000.60.0      syslog msg "[] Running $_event_type_string .. for show ap summary"
- action 0000.60.1      wait 1
+ action 0000.60.1      wait 2
  action 0000.60.2      cli command "show ap summary | inc Registered"
  action 0000.60.3      set show_ap_summary "$_cli_result"
  action 0000.60.4      foreach line "$show_ap_summary" "\n"
@@ -217,7 +217,7 @@ no event manager applet AP_CHECKER_RADIO_ROLE
  action 0500.40.1       if $_regexp_result eq "1"
  action 0500.40.3.1      if $ap_radio_role ne "Client Serving"
  action 0500.40.3.2.0     syslog msg "[$ap_name] Check slot $slot for radio role $ap_radio_role"
- action 0500.40.3.2.1     wait 1
+ action 0500.40.3.2.1     wait 2
  action 0500.40.3.9      end
  action 0500.40.9       end
  action 0500.90        end
@@ -229,8 +229,6 @@ no event manager applet AP_CHECKER_RADIO_ROLE
  action 9999.99.4      syslog msg "[] Ending $_event_type_string .. for show ap summary"
  action 9999.99.5     end
 !
-!
-
 !
 end
 !
