@@ -1,0 +1,108 @@
+! """
+! BSD 3-Clause License
+!
+! Copyright (c) 2024, grogier@cisco.com
+!
+! Redistribution and use in source and binary forms, with or without
+! modification, are permitted provided that the following conditions are met:
+!
+! 1. Redistributions of source code must retain the above copyright notice, this
+!    list of conditions and the following disclaimer.
+!
+! 2. Redistributions in binary form must reproduce the above copyright notice,
+!    this list of conditions and the following disclaimer in the documentation
+!    and/or other materials provided with the distribution.
+!
+! 3. Neither the name of the copyright holder nor the names of its
+!    contributors may be used to endorse or promote products derived from
+!    this software without specific prior written permission.
+!
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+! DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+! FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+! OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+!
+!
+! Cliff Notes ... pending nicer README.md
+! """
+
+!
+conf t
+!
+
+!
+!
+no event manager applet FOLLOW-ME
+   event manager applet FOLLOW-ME
+ event tag CRON timer cron cron-entry "*/1 * * * *"
+ event tag NONE none sync yes maxrun 30
+ trigger
+  correlate event NONE or event CRON
+ action 0000.00       set FOLLOW_MAC "b248.3787.785f"
+ action 0000.01       set FOLLOW_LED_TIME 60
+ action 0000.10       cli command "enable"
+ action 0000.20       cli command "term exec prompt timestamp"
+ action 0000.30       cli command "term length 0"
+ action 0000.40       set ap_list ""
+
+ action 0000.50       if $_event_type_string eq "syslog"
+ action 0000.50.2      set ap_name ""
+ ! action 0000.50.4.0    syslog msg "[$FOLLOW_MAC] Running $_event_type_string"
+ action 0000.50.4.1    comment .. wait 2 sec after syslog, as IOS-XE rate limits to like 1 sec only for given syslog flow
+ action 0000.50.4.2    wait 2
+ action 0000.50.5      set ap_list "$ap_name"
+
+ action 0000.60       else
+ ! action 0000.60.0      syslog msg "[$FOLLOW_MAC] Running $_event_type_string"
+ action 0000.60.1      wait 2
+ action 0000.60.2      cli command "show wireless client mac-address $FOLLOW_MAC detail | inc ^AP Name"
+ action 0000.60.3      set show_output "$_cli_result"
+ action 0000.60.4      foreach line "$show_output" "\n"
+ action 0000.60.41      regexp "^AP Name:[\s]+([^\r]+)" "$line" match ap_name
+ action 0000.60.42      if $_regexp_result eq "1"
+ action 0000.60.43       string trim "$ap_list"
+ action 0000.60.44       set ap_list "$_string_result"
+ action 0000.60.45       set ap_list "$ap_list $ap_name"
+ action 0000.60.46       string trim "$ap_list"
+ action 0000.60.47       set ap_list "$_string_result"
+ action 0000.60.49      end
+ action 0000.69        end
+ action 0000.90       end
+
+ action 0100          comment Iterate across AP list
+ action 0100.10       foreach ap_name "$ap_list"
+ action 0200           comment Fetch cdp neighbor
+ action 0200.00.1      set cdp_nei_name ""
+ action 0200.00.2      set cdp_nei_ip ""
+ action 0200.00.3      set cdp_nei_port ""
+ action 0200.01        cli command "show ap name $ap_name cdp neighbors | inc Ether"
+ action 0200.10.0      regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" "$_cli_result" match cdp_nei_name cdp_nei_ip cdp_nei_port
+ action 0200.10.1      if $_regexp_result eq "1"
+ action 0200.10.9      end
+
+
+ action 0800           comment Set LED blink
+ action 0800.00        cli command "ap name $ap_name led flash start duration $FOLLOW_LED_TIME"
+ action 0800.10.3.2.0  syslog msg "[$FOLLOW_MAC] Setting AP flash for $FOLLOW_LED_TIME sec on $ap_name on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0800.10.3.2.1  wait 2
+
+
+ action 0990           comment end of foreach ap_name "$ap_list"
+ action 0990.99       end
+ !
+ ! action 9999.99.1     if $_event_type_string eq "syslog"
+ ! action 9999.99.2      syslog msg "[$FOLLOW_MAC] Ending $_event_type_string"
+ ! action 9999.99.3     else
+ ! action 9999.99.4      syslog msg "[$FOLLOW_MAC] Ending $_event_type_string"
+ ! action 9999.99.5     end
+!
+!
+end
+!
+
