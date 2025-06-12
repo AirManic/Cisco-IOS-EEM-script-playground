@@ -44,7 +44,7 @@ no event manager applet FOLLOW-ME
  event tag NONE none sync yes maxrun 30
  trigger
   correlate event NONE or event CRON
- action 0000.00       set FOLLOW_MAC "b248.3787.785f"
+ action 0000.00       set FOLLOW_MAC "disable"
  action 0000.05       comment "b248.3787.785f"
  action 0000.09       set FOLLOW_LED_TIME 60
  action 0000.10       cli command "enable"
