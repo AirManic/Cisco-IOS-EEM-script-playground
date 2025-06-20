@@ -44,7 +44,7 @@ no event manager applet FOLLOW-ME
  event tag NONE none sync yes maxrun 30
  trigger
   correlate event NONE or event CRON
- action 0000.00       set FOLLOW_MAC "dead.beef.feed c001.00ff.cafe cafe.babe.c001"
+ action 0000.00       set FOLLOW_MAC "dead.beef.feed c001.00ff.cafe cafe.babe.face"
  action 0000.09       set FOLLOW_LED_TIME 60
  action 0000.10       cli command "enable"
  action 0000.20       cli command "term exec prompt timestamp"
