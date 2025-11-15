@@ -1,0 +1,62 @@
+! """
+! BSD 3-Clause License
+!
+! Copyright (c) 2024, grogier@cisco.com
+!
+! Redistribution and use in source and binary forms, with or without
+! modification, are permitted provided that the following conditions are met:
+!
+! 1. Redistributions of source code must retain the above copyright notice, this
+!    list of conditions and the following disclaimer.
+!
+! 2. Redistributions in binary form must reproduce the above copyright notice,
+!    this list of conditions and the following disclaimer in the documentation
+!    and/or other materials provided with the distribution.
+!
+! 3. Neither the name of the copyright holder nor the names of its
+!    contributors may be used to endorse or promote products derived from
+!    this software without specific prior written permission.
+!
+! THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+! AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+! IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+! DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+! FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+! DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+! SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+! CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+! OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+! OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+!
+!
+! Cliff Notes ... pending nicer README.md
+! """
+
+!
+conf t
+!
+
+!
+no event manager applet CRYPTO-KEY-GENERATE
+   event manager applet CRYPTO-KEY-GENERATE
+ event tag NONE none sync yes maxrun 180
+ event tag TIMER timer countdown time 90
+ event tag SYS_RESTART syslog pattern "SYS-5-RESTART: System restarted"
+ trigger
+  correlate event NONE or event TIMER or event SYS_RESTART
+ action 000.000      syslog msg "Running ... "
+ action 001          comment == CLI housekeeping
+ action 001.010      cli command "enable"
+ action 001.015      cli command "term exec prompt timestamp"
+ action 001.020      cli command "term length 0"
+ action 002.010.02   syslog msg "Destroy self"
+ action 002.020.01   cli command "config t"
+ action 002.020.10   cli command " no event manager applet CRYPTO-KEY-GENERATE"
+ action 002.020.80   cli command "end"
+ action 002.020.99   cli command "wr mem"
+ action 070   syslog msg  "crypto key generate rsa modulus 2048 general-keys"
+ action 071   cli command "crypto key generate rsa modulus 2048 general-keys"
+!
+
+! Benediction
+end
