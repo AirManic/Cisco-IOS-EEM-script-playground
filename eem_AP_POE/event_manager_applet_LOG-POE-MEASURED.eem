@@ -54,8 +54,9 @@ no event manager applet LOG-POE-MEASURED
  action 140.010.055 regexp "Admin Value: ([^\s\r\n]+)" "$_cli_result" match poe_admin
  action 140.010.056 regexp "Power drawn from the source: ([^\s\r\n]+)" "$_cli_result" match poe_drawn
  action 140.010.057 regexp "Measured at the port: ([^\s\r\n]+)" "$_cli_result" match poe_measured
+ action 140.010.058 regexp "Maximum Power drawn by the device since powered on: ([^\s\r\n]+)" "$_cli_result" match poe_max
  action 900.900     comment ### print some results
- action 900.900.010 syslog msg "Device: $_nd_cdp_entry_name Version: $version_short Type: $_nd_cdp_platform Switchport: $_nd_short_local_intf_name Admin: $poe_admin Drawn: $poe_drawn Measured: $poe_measured"
+ action 900.900.010 syslog msg "Device: $_nd_cdp_entry_name Version: $version_short Type: $_nd_cdp_platform Switchport: $_nd_short_local_intf_name Admin: $poe_admin Drawn: $poe_drawn Measured: $poe_measured Max: $poe_max"
  action 999.999.999 exit 0
 !
 end
