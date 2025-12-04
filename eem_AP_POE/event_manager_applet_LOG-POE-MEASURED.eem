@@ -40,7 +40,7 @@ no event manager applet LOG-POE-MEASURED
  event neighbor-discovery interface regexp Ethernet cdp update
  action 000.000.000 cli command "enable"
  action 110.000.010 cli command "show power inline $_nd_short_local_intf_name detail"
- action 130.000     comment ### only process if it is an AP 9100 series platform
+ action 130.000     comment ### only process if it is an AP 9100 or AIR series platform
  action 130.000.010 regexp "(cisco C91|cisco AIR)" "$_nd_cdp_platform"
  action 130.000.020 if $_regexp_result eq "0" goto 999.999.999
  action 130.010     comment ### given AP platform, extract $version_short
