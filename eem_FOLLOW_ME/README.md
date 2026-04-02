@@ -1,4 +1,5 @@
 
+
 Automates the process of identifying where a user is physically located by making the Access Point (AP) they are currently associated with blink its LED.
 
 How the Script Works:
