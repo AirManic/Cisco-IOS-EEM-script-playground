@@ -195,6 +195,7 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
             my_syslog.write(f"{s_NOTICE}Skipping {ap_cur_name} with model {ap_cur_model} as it is not on model list: {args.model}\n")
             continue
 
+
     # Retrieve the AP serial number
     ap_cur_serial = None
     ap_cur_inc_serial = cli(f"show ap name {ap_cur_name} config general | inc AP Serial Number")
