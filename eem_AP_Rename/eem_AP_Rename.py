@@ -211,6 +211,8 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
     if ap_cur_cdp_match:
         ap_cur_cdp_switch = ap_cur_cdp_match.group(3)
         ap_cur_cdp_port = ap_cur_cdp_match.group(5)
+        ap_cur_cdp_neighbor = ap_cur_cdp_switch + ":" + ap_cur_cdp_port
+        my_syslog.write(f"{s_NOTICE}CDP Neighbor detected {ap_cur_name} match {ap_cur_cdp_neighbor}\n")
 
     # little extra sanity.. as it is needed at least for ap_cur_location
     ap_cur_name = ap_cur_name.strip()
