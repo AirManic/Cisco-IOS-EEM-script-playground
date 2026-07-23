@@ -44,14 +44,19 @@ no event manager applet FOLLOW-ME
  event tag NONE none sync yes maxrun 30
  trigger
   correlate event NONE or event CRON
+ !
  action 0000.00       set FOLLOW_MAC "dead.beef.feed c001.00ff.cafe cafe.babe.face"
- action 0000.09       set FOLLOW_LED_TIME 60
+ action 0000.09.0     comment To make more responsive than just 1 min, loop and wait in shorter cycles
+ action 0000.09.3       set FOLLOW_LOOP_WAIT 10
+ action 0000.09.4       set FOLLOW_LOOP_NUMB 5
+ action 0000.09.5       set FOLLOW_LED_TIME 10
  action 0000.10       cli command "enable"
  action 0000.20       cli command "term exec prompt timestamp"
  action 0000.30       cli command "term length 0"
  action 0000.40       set ap_list ""
-
- action 0000.50       if $_event_type_string eq "syslog"
+!
+ action 0000.50.0     commment TODO development to trigger off of SYSLOG message from roaming event
+ action 0000.50.1     if $_event_type_string eq "syslog"
  action 0000.50.2      set ap_name ""
  ! action 0000.50.4.0    syslog msg "[$FOLLOW_MAC] Running $_event_type_string"
  action 0000.50.4.1    comment .. wait 2 sec after syslog, as IOS-XE rate limits to like 1 sec only for given syslog flow
@@ -71,9 +76,12 @@ no event manager applet FOLLOW-ME
  action 0000.60.45       set ap_list "$ap_list $ap_name"
  action 0000.60.46       string trim "$ap_list"
  action 0000.60.47       set ap_list "$_string_result"
- action 0000.60.49      end
- action 0000.69        end
- action 0000.90       end
+ action 0000.60.49      end  ! if regexp
+ action 0000.69        end  ! foreach
+ action 0000.90       end  ! if event_type
+
+
+
 
  action 0100          comment Iterate across AP list
  action 0100.10       foreach ap_name "$ap_list"

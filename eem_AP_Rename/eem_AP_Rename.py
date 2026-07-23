@@ -50,6 +50,7 @@ optional arguments:
                         specify csv infile, defaults to eem_AP_Rename.csv
   -l, --location        treat 2nd csv field as location data for AP, defaults
                         to false
+  -m', '--model'        specify AP model number list that must match AP to allow for changes, defaults to "NONE"
   -n NAME, --name NAME  check AP name for this specific MAC address
 
 
@@ -84,7 +85,7 @@ no event manager applet eem_AP_Rename
  action 300.020.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename.py bootflash:/guest-share/" pattern "]"
  action 300.020.6 cli command "" pattern "[confirm]"
  action 300.020.7 cli command "y"
- action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv"
+ action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename.py -l -c custom.csv -m 'CW9176I CW9179F C9120AXI-B"
  action 900.999.9 syslog msg "Finished"
 !
 end
@@ -113,6 +114,7 @@ import time
 
 my_name = os.path.basename(sys.argv[0])
 DEFAULT_INFILE = Path(my_name).stem + '.csv'
+DEFAULT_MODEL = "NONE"
 
 #Create the parser for extracting the expiry time
 parser = argparse.ArgumentParser()
@@ -121,6 +123,9 @@ parser.add_argument('-c', '--csv_infile',type=str, required=False,
                     help=f"specify csv infile, defaults to {DEFAULT_INFILE}")
 parser.add_argument('-l', '--location', required=False, action='store_true',
                     help=f"treat 2nd csv field as location data for AP, defaults to false")
+parser.add_argument('-m', '--model',type=str, required=False,
+                    default=f"{DEFAULT_MODEL}",
+                    help=f"specify AP model number list, defaults to {DEFAULT_MODEL}")
 parser.add_argument('-n', '--name', required=False,
                     help=f"check AP name for this specific MAC address")
 args = parser.parse_args()
@@ -185,26 +190,44 @@ ap_csv_aspect_list = ap_csv_dct.keys()
 # Step across the AP-s online
 for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location in ap_list:
 
+    if args.model not "NONE":
+        if ap_cur_model not in args.model:
+            my_syslog.write(f"{s_NOTICE}Skipping {ap_cur_name} with model {ap_cur_model} as it is not on model list: {args.model}\n")
+            continue
+
     # Retrieve the AP serial number
     ap_cur_serial = None
     ap_cur_inc_serial = cli(f"show ap name {ap_cur_name} config general | inc AP Serial Number")
     ap_cur_serial_match = re.search(r'^AP Serial Number\s+:\s+(\S+)', ap_cur_inc_serial)
     if ap_cur_serial_match: ap_cur_serial = ap_cur_serial_match.group(1)
 
-    # little extra sanity.. as it is neede at least for ap_cur_location
+    # Retrieve the AP CDP Neighbor
+    ap_cur_cdp = None
+    ap_cur_cdp_switch = None
+    ap_cur_cdp_port = None
+    ap_cur_inc_cdp = cli(f"show ap cdp neighbor | inc {ap_cur_name}")
+    ap_cur_cdp_match = re.search(r'^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)', ap_cur_inc_cdp)
+    if ap_cur_cdp_match:
+        ap_cur_cdp_switch = ap_cur_cdp_match.group(3)
+        ap_cur_cdp_port = ap_cur_cdp_match.group(5)
+
+    # little extra sanity.. as it is needed at least for ap_cur_location
     ap_cur_name = ap_cur_name.strip()
     ap_cur_model = ap_cur_model.strip()
     ap_cur_MACenet = ap_cur_MACenet.strip()
     ap_cur_MACradio = ap_cur_MACradio.strip()
     ap_cur_location = ap_cur_location.strip()
     ap_cur_serial = ap_cur_serial.strip()
+    ap_cur_cdp_switch = ap_cur_cdp_switch.strip()
+    ap_cur_cdp_port = ap_cur_cdp_port.strip()
+    ap_cur_cdp_switch_n_port = ap_cur_cdp_switch + ":" + ap_cur_cdp_port
 
     ap_new_aspect = None
     ap_new_name = None
     ap_new_location = None
 
     # Determine is there is an csv AP that matches one of the ap_cur_aspect items
-    for ap_cur_aspect in [ap_cur_MACradio, ap_cur_MACenet, ap_cur_serial]:
+    for ap_cur_aspect in [ap_cur_MACradio, ap_cur_MACenet, ap_cur_serial, ap_cur_cdp_switch_n_port]:
         # if this looks like a MAC address.. distill down to only upper case hex digits
         if all(c in '0123456789abcdefABCDEF.:-\s' for c in ap_cur_aspect):
             ap_cur_aspect = re.sub(r'[^0-9a-fA-F]', '', ap_cur_aspect).upper()
