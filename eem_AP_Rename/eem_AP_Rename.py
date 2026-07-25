@@ -114,7 +114,7 @@ import time
 
 my_name = os.path.basename(sys.argv[0])
 DEFAULT_INFILE = Path(my_name).stem + '.csv'
-DEFAULT_MODEL = "NONE"
+DEFAULT_MODEL = ''
 
 #Create the parser for extracting the expiry time
 parser = argparse.ArgumentParser()
@@ -138,6 +138,7 @@ args = parser.parse_args()
 # TODO given that writing to /dev/ttyS2 will drop frames if writing faster than 2-3 messages per sec,
 #   need to be careful to my_syslog.write() only when minimally required.
 my_syslog = open('/dev/ttyS2', 'w')
+
 # for syslogd magic number is a123b234 with version 1
 s_DEBUG  = f"[a123b234,1,7]{my_name} "
 s_INFO   = f"[a123b234,1,6]{my_name} "
@@ -145,6 +146,8 @@ s_NOTICE = f"[a123b234,1,5]{my_name} "
 s_WARN   = f"[a123b234,1,4]{my_name} "
 s_ERR    = f"[a123b234,1,3]{my_name} "
 s_CRIT   = f"[a123b234,1,2]{my_name} "
+
+my_syslog.write(f"{s_NOTICE}Hello World!\n")
 
 # Initialize the reverse lookup dictionary
 ap_csv_dct = {}
@@ -180,6 +183,7 @@ if args.name:
     ap_summary = cli(f"show ap summary | inc {args.name}")
     time.sleep(1.001)
 else:
+    my_syslog.write(f"{s_NOTICE}Looking for ALL AP-s\n")
     ap_summary = cli(f"show ap summary")
 
 ap_list = re.findall(r'(^\S+)\s+\d\s+(\S+)\s+(\S+)\s+(\S+)\s+.*Registered\s+(.*)', ap_summary, re.MULTILINE)
@@ -190,7 +194,9 @@ ap_csv_aspect_list = ap_csv_dct.keys()
 # Step across the AP-s online
 for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location in ap_list:
 
-    if args.model not "NONE":
+    my_syslog.write(f"{s_NOTICE}Skipping {ap_cur_name} with model {ap_cur_model} as it is not on model list: {args.model}\n")
+
+    if args.model not NONE:
         if ap_cur_model not in args.model:
             my_syslog.write(f"{s_NOTICE}Skipping {ap_cur_name} with model {ap_cur_model} as it is not on model list: {args.model}\n")
             continue
@@ -206,13 +212,14 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
     ap_cur_cdp = None
     ap_cur_cdp_switch = None
     ap_cur_cdp_port = None
+    ap_cur_cdp_neighbor = None
     ap_cur_inc_cdp = cli(f"show ap cdp neighbor | inc {ap_cur_name}")
     ap_cur_cdp_match = re.search(r'^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)', ap_cur_inc_cdp)
     if ap_cur_cdp_match:
         ap_cur_cdp_switch = ap_cur_cdp_match.group(3)
         ap_cur_cdp_port = ap_cur_cdp_match.group(5)
         ap_cur_cdp_neighbor = ap_cur_cdp_switch + ":" + ap_cur_cdp_port
-        my_syslog.write(f"{s_NOTICE}CDP Neighbor detected {ap_cur_name} match {ap_cur_cdp_neighbor}\n")
+    my_syslog.write(f"{s_NOTICE}CDP Neighbor detected {ap_cur_name} match {ap_cur_cdp_neighbor}\n")
 
     # little extra sanity.. as it is needed at least for ap_cur_location
     ap_cur_name = ap_cur_name.strip()
