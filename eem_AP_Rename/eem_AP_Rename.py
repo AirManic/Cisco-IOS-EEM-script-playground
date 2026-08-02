@@ -147,7 +147,21 @@ s_WARN   = f"[a123b234,1,4]{my_name} "
 s_ERR    = f"[a123b234,1,3]{my_name} "
 s_CRIT   = f"[a123b234,1,2]{my_name} "
 
-my_syslog.write(f"{s_NOTICE}Hello World!\n")
+class AccessPoint(dict):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.ap_name = kwargs.get('ap_name')
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+ALL_AP = []
+
+# Open the CSV file for the desired AP mapping
+with open(f"/flash/guest-share/{args.csv_infile}") as csvfile:
+    for line in csv.reader(csvfile, delimiter=',', quotechar='"'):
+        ap = AccessPoint(**line)
+        ALL_AP.append(ap)
+
 
 # Initialize the reverse lookup dictionary
 ap_csv_dct = {}
@@ -161,9 +175,9 @@ with open(f"/flash/guest-share/{args.csv_infile}") as csvfile:
     infile_csv_dct = csv.DictReader(csvfile, fieldnames=ap_infile_csv_fieldnames, restkey='ap_csv_details', restval=[])
 
     for row in infile_csv_dct:
+
         # Extract the AP name and details
         ap_csv_name = row['ap_csv_name'].strip()
-
         if args.location:
             ap_csv_location = row.get('ap_csv_location')
             ap_csv_location_dct[ap_csv_name] = ap_csv_location.strip()
@@ -218,8 +232,8 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
     if ap_cur_cdp_match:
         ap_cur_cdp_switch = ap_cur_cdp_match.group(3)
         ap_cur_cdp_port = ap_cur_cdp_match.group(5)
-        ap_cur_cdp_neighbor = ap_cur_cdp_switch + ":" + ap_cur_cdp_port
-    my_syslog.write(f"{s_NOTICE}CDP Neighbor detected {ap_cur_name} match {ap_cur_cdp_neighbor}\n")
+        ap_cur_cdp_switch_n_port = ap_cur_cdp_switch + ":" + ap_cur_cdp_port
+    my_syslog.write(f"{s_NOTICE}CDP Neighbor detected {ap_cur_name} match {ap_cur_cdp_switch_n_port}\n")
 
     # little extra sanity.. as it is needed at least for ap_cur_location
     ap_cur_name = ap_cur_name.strip()
@@ -230,7 +244,7 @@ for ap_cur_name, ap_cur_model, ap_cur_MACenet, ap_cur_MACradio, ap_cur_location 
     ap_cur_serial = ap_cur_serial.strip()
     ap_cur_cdp_switch = ap_cur_cdp_switch.strip()
     ap_cur_cdp_port = ap_cur_cdp_port.strip()
-    ap_cur_cdp_switch_n_port = ap_cur_cdp_switch + ":" + ap_cur_cdp_port
+    ap_cur_cdp_switch_n_port = ap_cur_cdp_switch_n_port.strip()
 
     ap_new_aspect = None
     ap_new_name = None
