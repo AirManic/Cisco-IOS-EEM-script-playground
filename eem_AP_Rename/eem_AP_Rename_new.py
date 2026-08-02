@@ -82,7 +82,7 @@ no event manager applet eem_AP_Rename
  ! action 300.020.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename_new.py bootflash:/guest-share/" pattern "]"
  ! action 300.020.6 cli command "" pattern "[confirm]"
  ! action 300.020.7 cli command "y"
- action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename_new.py -c custom.csv -n $find_ap_name"
+ action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename_new.py -n $find_ap_name"
  action 900.999.9 syslog msg "Finished"
 !
 end
