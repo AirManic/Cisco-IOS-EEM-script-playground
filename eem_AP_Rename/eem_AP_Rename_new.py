@@ -112,6 +112,7 @@ is_guestshell = os.uname().nodename == 'guestshell'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
+    from eem import action_syslog
 else:
     # if not running in guestshell create placeholder functions so we can exercise the code for development work
     def cli(command: str):
@@ -125,6 +126,8 @@ else:
     def execute(command: str):
         return ''
     def executep(command: str):
+        return ''
+    def action_syslog(message, level, facility):
         return ''
 
 my_name = os.path.basename(sys.argv[0])
@@ -168,10 +171,15 @@ def send_ios_syslog(message, facility=my_name, severity=l_INFO, mnemonic=None):
     # Construct the standard Cisco log prefix
     log_string = f"%{facility}-{severity}-{mnemonic}: {message}"
     if is_guestshell:
+        # TODO still working to figure out how to write to IOS-XE logging/syslog
         try:
             # Open the specific IOx serial pipe
+            # TODO does not seem to work
             with open("/dev/ttyS3", "w") as syslog_pipe:
                 syslog_pipe.write(log_string)
+            # TODO Let's try this approach
+            action_syslog(message, severity, facility)
+            # TODO this only logs in the native bash shell running manually
             print(log_string)
         except FileNotFoundError:
             print(f"Error: /dev/ttyS3 not found. Ensure this is executed inside Guestshell.")
@@ -336,6 +344,16 @@ def main():
             command = f"enable ; ap name {online_ap['AP_NAME']} name {match_ap['AP_NAME']}"
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sending {command}")
             cli("enable ; " + command)
+
+# for CW9176D1
+# ap name AP dot11 dual-band shutdown
+# ap name AP dot11 dual-band radio role manual client-serving
+# ap name AP dot11 dual-band band 5ghz
+# ap name AP no dot11 dual-band shutdown
+
+# for CW9178I
+# ap name AP dot11 5ghz dual-radio mode enable
+# ap name AP no dot11 5ghz slot 2 shutdown
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ...")

@@ -3,13 +3,6 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="/eem_AP_Rename/custom.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="/eem_AP_Rename/eem_AP_Rename.csv">
           <value>
             <Attribute>
@@ -17,21 +10,7 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/eem_AP_Rename/eem_AP_Rename_dev.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="/eem_AP_Rename/eem_AP_Rename_new.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/eem_AP_Rename/example_AP_Rename.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
