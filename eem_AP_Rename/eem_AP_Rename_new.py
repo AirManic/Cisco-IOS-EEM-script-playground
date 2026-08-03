@@ -241,6 +241,7 @@ def main():
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
             if args.debug: send_ios_syslog(severity=l_DEBUG,message=f"{cli_ap_summary}")
+            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
             command = f"show ap cdp neighbor | inc {args.name}"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp = cli(command)
@@ -291,20 +292,50 @@ def main():
         for ap in sorted_ONLINE_APs:
             send_ios_syslog(severity=l_DEBUG, message=f"ONLINE_APs has {ap}")
 
+
+    do_rename_ap = False
+
     for online_ap in sorted_ONLINE_APs:
 
         match_ap = next((ap for ap in NEW_APs
-                         if ap['AP_CDP_SWITCH'] in online_ap['AP_CDP_SWITCH']
-                         and ap['AP_CDP_SWITCH_PORT'] == online_ap['AP_CDP_SWITCH_PORT']
-                         and ap['AP_MODEL'] in online_ap['AP_MODEL']
+                         if (
+                             # at least on of these criteria exist, then step across them
+                                ap['AP_MODEL']
+                             or ap['AP_SERIAL']
+                             or ap['AP_CDP_SWITCH']
+                             or ap['AP_CDP_SWITCH_PORT']
+                            )
+                         and (
+                             # if this not our criteria, move on.. or check it
+                                 (ap['AP_MODEL'] is None)
+                              or (ap['AP_MODEL'] and ap['AP_MODEL'] in online_ap['AP_MODEL'])
+                             )
+                        and (
+                             # if this not our criteria, move on.. or check it
+                                 (ap['AP_SERIAL'] is None)
+                              or (ap['AP_SERIAL'] and ap['AP_SERIAL'] in online_ap['AP_SERIAL'])
+                             )
+                         and (
+                             # if this not our criteria, move on.. or check it
+                                 (ap['AP_CDP_SWITCH'] is None)
+                              or (ap['AP_CDP_SWITCH'] and ap['AP_CDP_SWITCH'] in online_ap['AP_CDP_SWITCH'])
+                             )
+                         and (
+                             # if this not our criteria, move on.. or check it
+                                 (ap['AP_CDP_SWITCH_PORT'] is None)
+                              or (ap['AP_CDP_SWITCH_PORT'] and ap['AP_CDP_SWITCH_PORT'] == online_ap['AP_CDP_SWITCH_PORT'])
+                             )
                          ), None)
         if match_ap:
             if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"Found match NEW_AP {match_ap} as ONLINE {online_ap}")
             if match_ap['AP_NAME'] != online_ap['AP_NAME']:
-                send_ios_syslog(severity=l_INFO, message=f"Changing to new name {match_ap['AP_NAME']} for {online_ap}")
-                command = f"enable ; ap name {online_ap['AP_NAME']} name {match_ap['AP_NAME']}"
-                if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sending {command}")
-                cli("enable ; " + command)
+                do_rename_ap = True
+
+        if do_rename_ap:
+            send_ios_syslog(severity=l_INFO, message=f"Changing to new name {match_ap['AP_NAME']} for {online_ap}")
+            command = f"enable ; ap name {online_ap['AP_NAME']} name {match_ap['AP_NAME']}"
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sending {command}")
+            cli("enable ; " + command)
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ...")
