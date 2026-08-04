@@ -175,7 +175,7 @@ def send_ios_syslog(message, severity=l_INFO):
                     log_string = f"{magic}{my_name} {line}\n"
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
-                    time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet
+                    time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
 
         except FileNotFoundError:
             print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
