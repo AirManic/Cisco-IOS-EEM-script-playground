@@ -64,7 +64,7 @@ conf t
 !  .. thus a bit brute force, albeit gets the job done to run repeatedly for AP join messages
 no event manager applet eem_AP_Rename
    event manager applet eem_AP_Rename
- event tag CRON timer cron cron-entry "*/5 */4 * * *"
+ event tag CRON timer cron cron-entry "5 */4 * * *"
  event tag NONE none maxrun 1800
  event tag SYS1 syslog pattern "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined"
  event tag SYS2 syslog pattern "APMGR_TRACE_MESSAGE-4-WLC_APMGR_WARNING_MSG.*is associated with the policy tag"
@@ -112,7 +112,6 @@ is_guestshell = os.uname().nodename == 'guestshell'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
-    from eem import action_syslog
 else:
     # if not running in guestshell create placeholder functions so we can exercise the code for development work
     def cli(command: str):
@@ -126,8 +125,6 @@ else:
     def execute(command: str):
         return ''
     def executep(command: str):
-        return ''
-    def action_syslog(message, level, facility):
         return ''
 
 my_name = os.path.basename(sys.argv[0])
@@ -144,13 +141,13 @@ l_ERR    = 3
 l_CRIT   = 2
 
 if is_guestshell:
-    # /dev/tty32 format for for syslogd magic number is a123b234 with version 1 then level
-    s_DEBUG  = f"[a123b234,1,l_DEBUG]"
-    s_INFO   = f"[a123b234,1,l_INFO]"
-    s_NOTICE = f"[a123b234,1,l_NOTICE]"
-    s_WARN   = f"[a123b234,1,l_WARN]"
-    s_ERR    = f"[a123b234,1,l_ERR]"
-    s_CRIT   = f"[a123b234,1,l_CRIT]"
+    # /dev/ttyS2 format for for syslogd magic number is a123b234 with version 1 then level
+    s_DEBUG  = f"[a123b234,1,{l_DEBUG}]"
+    s_INFO   = f"[a123b234,1,{l_INFO}]"
+    s_NOTICE = f"[a123b234,1,{l_NOTICE}]"
+    s_WARN   = f"[a123b234,1,{l_WARN}]"
+    s_ERR    = f"[a123b234,1,{l_ERR}]"
+    s_CRIT   = f"[a123b234,1,{l_CRIT}]"
 else:
     # Use this for local testing
     s_DEBUG  = f"DEBUG"
@@ -160,29 +157,28 @@ else:
     s_ERR    = f"ERR"
     s_CRIT   = f"CRIT"
 
-def send_ios_syslog(message, facility=my_name, severity=l_INFO, mnemonic=None):
-    if  mnemonic is None:
-        if severity == l_DEBUG: mnemonic = s_DEBUG
-        if severity == l_INFO: mnemonic = s_INFO
-        if severity == l_NOTICE: mnemonic = s_NOTICE
-        if severity == l_WARN: mnemonic = s_WARN
-        if severity == l_ERR: mnemonic = s_ERR
-        if severity == l_CRIT: mnemonic = s_CRIT
+def send_ios_syslog(message, severity=l_INFO):
+    my_name = os.path.basename(sys.argv[0])
+    if severity == l_DEBUG:  magic = s_DEBUG
+    if severity == l_INFO:   magic = s_INFO
+    if severity == l_NOTICE: magic = s_NOTICE
+    if severity == l_WARN:   magic = s_WARN
+    if severity == l_ERR:    magic = s_ERR
+    if severity == l_CRIT:   magic = s_CRIT
     # Construct the standard Cisco log prefix
-    log_string = f"%{facility}-{severity}-{mnemonic}: {message}"
     if is_guestshell:
         # TODO still working to figure out how to write to IOS-XE logging/syslog
         try:
             # Open the specific IOx serial pipe
-            # TODO does not seem to work
-            with open("/dev/ttyS3", "w") as syslog_pipe:
-                syslog_pipe.write(log_string)
-            # TODO Let's try this approach
-            action_syslog(message, severity, facility)
-            # TODO this only logs in the native bash shell running manually
-            print(log_string)
+            with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
+                for line in message.splitlines():
+                    log_string = f"{magic}{my_name} {line}\n"
+                    syslog_pipe.write(log_string)
+                    syslog_pipe.flush()
+                    time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet
+
         except FileNotFoundError:
-            print(f"Error: /dev/ttyS3 not found. Ensure this is executed inside Guestshell.")
+            print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
     else:
         print(f"{log_string}")
 
@@ -242,9 +238,10 @@ def main():
 
     cli_ap_summary = None
     cli_ap_cdp = None
+
     if is_guestshell:
         # Retrieve the AP list from the WLC
-        if args.name != "None":
+        if args.name != None and args.name != "None":
             command = f"show ap summary | inc {args.name}"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
@@ -268,7 +265,6 @@ def main():
             cli_ap_summary = file.read()
         with open(f"./dev_AP_CDP.txt") as file:
             cli_ap_cdp = file.read()
-    time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet
 
     ONLINE_APs = []
 
