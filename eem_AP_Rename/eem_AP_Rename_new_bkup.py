@@ -175,16 +175,14 @@ def send_ios_syslog(message, severity=l_INFO):
                     log_string = f"{magic}{my_name} {line}\n"
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
-                    time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
+                    time.sleep(1.001)  # Allow syslog to output before returning to the EEM applet
 
         except FileNotFoundError:
             print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
     else:
         print(f"{log_string}")
 
-csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
-              'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
-              'AP_DUAL_5GHZ']  # Define fields to strip
+csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']  # Define fields to strip
 class AccessPoint(dict):
 
     def __init__(self, *args, **kwargs):
@@ -226,8 +224,6 @@ def main():
                         help=f"print debug message")
     args = parser.parse_args()
 
-    # TODO force args.debug whilst doing development work
-    args.debug = True
 
     NEW_APs = []
     # Open the CSV file for the desired AP mapping
@@ -303,42 +299,26 @@ def main():
 
     do_rename_ap = False
 
-    def matching_ap (criteria=None, online_ap=None, ap=None):
-        # assume not matching
-        match_ap = False
-        for aspect in criteria:
-            # if this not our criteria, move on.. or check it
-            if (
-               (ap[aspect] is None)
-               or (ap[aspect] and ap[aspect] in online_ap[aspect])
-            ):
-                match_ap = match_ap and True
-        return match_ap
-
     for online_ap in sorted_ONLINE_APs:
 
-        # First look for a full match of all the criteria that is present
-        criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_CDP_MAC_ENET', 'AP_CDP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-        if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"MATCH_AP Looking for full criteria match for ONLINE {online_ap}")
-        match_ap = next((ap for ap in NEW_APs
-                        matching_ap(criteria=criteria, online_ap=online_ap, ap=ap)
-
-        if match_ap:
-            if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CHANGE_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
-            if match_ap['AP_NAME'] != online_ap['AP_NAME']:
-                change_ap = match_ap
-                do_rename_ap = True
-
-        # Now let's check for cases of partial specific combination match for the criteria that is present
-        if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"MATCH_AP Looking for partial criteria of matching switchport match for ONLINE {online_ap}")
         match_ap = next((ap for ap in NEW_APs
                          if (
                              # at least on of these criteria exist, then step across them
-                             ap['AP_CDP_SWITCH']
+                                ap['AP_MODEL']
+                             or ap['AP_SERIAL']
+                             or ap['AP_CDP_SWITCH']
                              or ap['AP_CDP_SWITCH_PORT']
                             )
+                         and (
+                             # if this not our criteria, move on.. or check it
+                                 (ap['AP_MODEL'] is None)
+                              or (ap['AP_MODEL'] and ap['AP_MODEL'] in online_ap['AP_MODEL'])
+                             )
+                        and (
+                             # if this not our criteria, move on.. or check it
+                                 (ap['AP_SERIAL'] is None)
+                              or (ap['AP_SERIAL'] and ap['AP_SERIAL'] in online_ap['AP_SERIAL'])
+                             )
                          and (
                              # if this not our criteria, move on.. or check it
                                  (ap['AP_CDP_SWITCH'] is None)
@@ -353,16 +333,12 @@ def main():
         if match_ap:
             if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"Found match NEW_AP {match_ap} as ONLINE {online_ap}")
             if match_ap['AP_NAME'] != online_ap['AP_NAME']:
-                change_ap = match_ap
                 do_rename_ap = True
 
         if do_rename_ap:
-            send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Change name {change_ap['AP_NAME']} for {online_ap}")
-            command = f"enable ; ap name {online_ap['AP_NAME']} name {change_ap['AP_NAME']}"
-            if args.debug:
-                # if debugging, don't actually make the change .. comment out command but send
-                command = "! CRIPPLED " + command
-                send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Sending {command}")
+            send_ios_syslog(severity=l_INFO, message=f"Changing to new name {match_ap['AP_NAME']} for {online_ap}")
+            command = f"enable ; ap name {online_ap['AP_NAME']} name {match_ap['AP_NAME']}"
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sending {command}")
             cli("enable ; " + command)
 
 # for CW9176D1

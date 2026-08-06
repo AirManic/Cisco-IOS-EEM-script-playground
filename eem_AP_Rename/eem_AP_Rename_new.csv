@@ -1,5 +1,5 @@
-AP_NAME,AP_MODEL,AP_SERIAL,AP_LOCATION,AP_CDP_SWITCH,AP_CDP_SWITCH_PORT, AP_MAC_ENET, AP_MAC_RADIO
- c9130-StarWars-DarthSidious-new,C9130AXI-B, , ,sw-TingelArm,GigabitEthernet0/1
+AP_NAME,AP_MODEL,AP_SERIAL,AP_LOCATION,AP_CDP_SWITCH,AP_CDP_SWITCH_PORT, AP_MAC_ENET, AP_MAC_RADIO, AP_DUAL_5GHZ
+ c9130-StarWars-DarthSidious-new,C9130AXI-B, , ,sw-TingelArm,GigabitEthernet0/1,Yes
  c9130-StarWars-DarthSidious,  ,KWC233303FP, Star Destroyer , , , 04eb.409e.2cd0, 04:eb:40-9f-cc-e0
  c9130-StarWars-DarthVader, ,, TIE Fighter , , , 04.eb40.9e29.00
  c9120-StarWars-KyloRen, ,FJC27061YW1, default, , , c828.e56e.7740,c828.e5a4.c740
