@@ -309,8 +309,11 @@ def main():
         for aspect in criteria:
             # if this not our criteria, move on.. or check it
             if (
-               (ap[aspect] is None)
-               or (ap[aspect] and ap[aspect] in online_ap[aspect])
+                (ap[aspect])
+                and (
+                    (ap[aspect] is None)
+                    or (ap[aspect] and ap[aspect] in online_ap[aspect])
+                )
             ):
                 match_ap = match_ap and True
         return match_ap
@@ -333,28 +336,6 @@ def main():
         # Now let's check for cases of partial specific combination match for the criteria that is present
         if args.debug: send_ios_syslog(severity=l_DEBUG,
                                        message=f"MATCH_AP Looking for partial criteria of matching switchport match for ONLINE {online_ap}")
-        match_ap = next((ap for ap in NEW_APs
-                         if (
-                             # at least on of these criteria exist, then step across them
-                             ap['AP_CDP_SWITCH']
-                             or ap['AP_CDP_SWITCH_PORT']
-                            )
-                         and (
-                             # if this not our criteria, move on.. or check it
-                                 (ap['AP_CDP_SWITCH'] is None)
-                              or (ap['AP_CDP_SWITCH'] and ap['AP_CDP_SWITCH'] in online_ap['AP_CDP_SWITCH'])
-                             )
-                         and (
-                             # if this not our criteria, move on.. or check it
-                                 (ap['AP_CDP_SWITCH_PORT'] is None)
-                              or (ap['AP_CDP_SWITCH_PORT'] and ap['AP_CDP_SWITCH_PORT'] == online_ap['AP_CDP_SWITCH_PORT'])
-                             )
-                         ), None)
-        if match_ap:
-            if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"Found match NEW_AP {match_ap} as ONLINE {online_ap}")
-            if match_ap['AP_NAME'] != online_ap['AP_NAME']:
-                change_ap = match_ap
-                do_rename_ap = True
 
         if do_rename_ap:
             send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Change name {change_ap['AP_NAME']} for {online_ap}")
