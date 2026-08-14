@@ -130,9 +130,12 @@ else:
         return ''
     def executep(command: str):
         return ''
-    SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
-    SIM_FILE_EEM_AP_CDP  = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
     DEFAULT_INFILE = "./experimental/exp_" + PurePath(my_name).stem + '.csv'
+    SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
+    SIM_FILE_EEM_AP_ENET = f"./experimental/exp_eem_AP_ethernet_stats.txt"
+    SIM_FILE_EEM_AP_CONF = f"./exp_eem_AP_config_general.txt"
+    SIM_FILE_EEM_AP_CDP_DETAIL = f"./experimental/exp_eem_AP_CDP_neighbors_detail.txt.txt"
+    SIM_FILE_EEM_AP_CDP = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
 
 l_DEBUG  = 7
 l_INFO   = 6
@@ -204,23 +207,54 @@ class AccessPoint(dict):
         super().__setitem__(key, new_value)
 
     def match_ap_criteria(self, criteria=None, ap=None):
+        # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
+        # track if there is at least one criteria item called out that matches
         is_ap_criteria = False
+        # seed the match with True, as it will go False if there is a criteria item that does not match
         match_ap = True
         for aspect in criteria:
-            is_ap_criteria = is_ap_criteria or ap[aspect]
-            match_ap = match_ap and (
-                                      (ap[aspect] is None)
-                                      or ( ap[aspect] and re.match(rf"{ap[aspect]}", self[aspect]) )
-                                    )
-        return is_ap_criteria and match_ap
+            # make sure both devices being compared have valid aspect values, else will get error on fullmatch
+            this_criteria_ap = ap[aspect] is not None and ap[aspect] != ''
+            this_criteria_self = self[aspect] is not None and self[aspect] != ''
+            # make note once have at least one criteria to match of value of ONLY the AP trying to match
+            is_ap_criteria = is_ap_criteria or this_criteria_ap
+
+            # both AP-s being compared must have valid criteria to check, else fullmatch will error
+            if this_criteria_ap and this_criteria_self:
+                # now check it for a match, where anything that does not match will make it go False
+                match_ap = match_ap and ( (ap[aspect] is None or ap[aspect] == '')
+                                          or ( ap[aspect] and re.fullmatch(rf"{ap[aspect]}", self[aspect]) ) )
+            # if one of the AP records being checked has this criteria, but the other one does not.. then false the match
+            if ( (not this_criteria_ap and this_criteria_self)
+                or (this_criteria_ap and not this_criteria_self) ):
+                match_ap = False
+
+        # if had at least one item to match on.. and if all the items called out did match
+        got_a_solid_match = is_ap_criteria and match_ap
+        if got_a_solid_match:
+            if args.debug:
+                send_ios_syslog(severity=l_DEBUG,
+                                message=f"match_ap_criteria() matching {self['AP_NAME']} matches {ap['AP_NAME']} based on criteria {criteria}")
+                send_ios_syslog(severity=l_DEBUG,
+                                message=f"match_ap_criteria() matching {self} matches {ap}")
+        return got_a_solid_match
 
     def matching_ap(self, criteria=None, ap_list=None):
+        # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
+        for aspect in criteria:
+            if self[aspect] is None or self[aspect] == '':
+                if args.debug:
+                    send_ios_syslog(severity=l_DEBUG,
+                                    message=f"matching_ap() missing {aspect} {self['AP_NAME']}")
         match_ap = next( (ap for ap in ap_list if
                          self.match_ap_criteria(criteria=criteria, ap=ap) ), None )
         return match_ap
 
 
 def main():
+
+    # make args global so we can use outside this scope
+    global args
 
     # Create the parser for extracting the expiry time
     parser = argparse.ArgumentParser()
@@ -236,9 +270,15 @@ def main():
     args = parser.parse_args()
 
     NEW_APs = []
+
     # Open the CSV file for the desired AP mapping
-    with open(f"{args.infile_csv}") as csvfile:
-        for ap in csv.DictReader(csvfile, delimiter=',', quotechar='"', restkey='details', restval=None):
+    with open(f"{args.infile_csv}",mode='r', encoding='utf-8') as csvfile:
+        # Read and clean the first row (header) keys
+        header_line = csvfile.readline()
+        raw_headers = next(csv.reader([header_line]))
+        cleaned_headers = [h.strip() for h in raw_headers]
+
+        for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
             NEW_APs.append(AccessPoint(ap))
 
     if args.debug:
@@ -288,11 +328,11 @@ def main():
             online_ap['AP_NAME'] = match_cli_ap_summ.group(1)
             online_ap['AP_MODEL'] = match_cli_ap_summ.group(3)
 
-            for line in cli_ap_cdp.splitlines():
+            for cdp_line in cli_ap_cdp.splitlines():
                 # look for Ether to be in the line to filter off other misc lines
                 f_regex = f"^({online_ap['AP_NAME']})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+Ether\S+)"
                 pattern = re.compile(f_regex)
-                match_cli_cdp = re.search(pattern, line)
+                match_cli_cdp = re.search(pattern, cdp_line)
                 if match_cli_cdp:
                     online_ap['AP_CDP_SWITCH'] = match_cli_cdp.group(3).split(".")[0]
                     online_ap['AP_CDP_SWITCH_PORT'] = match_cli_cdp.group(5)
@@ -309,26 +349,22 @@ def main():
     for online_ap in sorted_ONLINE_APs:
 
         # First look for a full match of all the criteria that is present
-        criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_CDP_MAC_ENET', 'AP_CDP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
+        criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
         if args.debug:
             search_ap = "{"
             for item in criteria:
                 if item in online_ap and online_ap[item]:
                     search_ap = search_ap + f"'{item}: {online_ap[item]}', "
-            send_ios_syslog(severity=l_DEBUG,
-                            message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {search_ap}")
-        # TODO match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
+            if args.debug:
+                send_ios_syslog(severity=l_DEBUG,
+                                message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {search_ap}")
+        match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
 
-        # TODO cripppled for now
-        match_ap = False
-
-        change_ap = None
         do_rename_ap = False
         if match_ap:
             if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"MATCH_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
             if match_ap['AP_NAME'] != online_ap['AP_NAME']:
-                change_ap = match_ap
-                do_rename_ap = True
+                do_rename_ap = match_ap
 
         # TODO cripppled for now
         match_ap = False
@@ -341,13 +377,13 @@ def main():
                     pass
 
         if do_rename_ap:
-            send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Change name {change_ap['AP_NAME']} for {online_ap}")
-            command = f"enable ; ap name {online_ap['AP_NAME']} name {change_ap['AP_NAME']}"
+            send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Change name {do_rename_ap['AP_NAME']} for {online_ap}")
+            command = f"enable ; ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
             if args.debug:
                 # if debugging, don't actually make the change .. comment out command but send
                 # TODO cripppled for now
                 command = "! CRIPPLED " + command
-                send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Sending {command}")
+                send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending {command}")
             cli("enable ; " + command)
 
 # for CW9176D1

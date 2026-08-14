@@ -24,6 +24,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/eem_AP_Rename/experimental/exp_eem_AP_Rename_new.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>
