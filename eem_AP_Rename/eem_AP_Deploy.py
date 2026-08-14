@@ -412,11 +412,9 @@ def main():
         if do_rename_ap:
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Renaming to name {do_rename_ap['AP_NAME']} for {online_ap}")
             command = f"enable ; ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
-            if args.debug:
-                # if debugging, don't actually make the change .. comment out command but send
-                # TODO cripppled for now
-                command = "! CRIPPLED " + command
-                send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending {command}")
+            # TODO cripppled for now
+            command = "! CRIPPLED " + command
+            send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
             cli("enable ; " + command)
 
 # for CW9176D1
