@@ -106,6 +106,9 @@ import sys
 import re
 import csv
 import time
+import copy
+import random
+import string
 
 my_name = os.path.basename(sys.argv[0])
 
@@ -134,7 +137,7 @@ else:
     SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
     SIM_FILE_EEM_AP_ENET = f"./experimental/exp_eem_AP_ethernet_stats.txt"
     SIM_FILE_EEM_AP_CONF = f"./exp_eem_AP_config_general.txt"
-    SIM_FILE_EEM_AP_CDP_DETAIL = f"./experimental/exp_eem_AP_CDP_neighbors_detail.txt.txt"
+    SIM_FILE_EEM_AP_CDP_DETAIL = f"./experimental/exp_eem_AP_CDP_neighbors_detail.txt"
     SIM_FILE_EEM_AP_CDP = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
 
 l_DEBUG  = 7
@@ -161,7 +164,9 @@ else:
     s_ERR    = f"ERR"
     s_CRIT   = f"CRIT"
 
-def send_ios_syslog(message, severity=l_INFO):
+global run_string
+run_string = ''.join(random.choices(string.digits, k=5))
+def send_ios_syslog(message=None, severity=l_INFO):
     my_name = os.path.basename(sys.argv[0])
     magic = ""
     if severity == l_DEBUG:  magic = s_DEBUG
@@ -174,7 +179,7 @@ def send_ios_syslog(message, severity=l_INFO):
     # TODO still working to figure out how to write to IOS-XE logging/syslog
     try:
         for line in message.splitlines():
-            log_string = f"{my_name} {line}"
+            log_string = f"{my_name} RunID {run_string} {line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
                 log_string = f"{magic}{my_name} {line}"
@@ -288,6 +293,7 @@ def main():
 
     cli_ap_summary = None
     cli_ap_cdp = None
+    cli_ap_cdp_detail = None
 
     if is_guestshell:
         # Retrieve the AP list from the WLC
@@ -295,26 +301,30 @@ def main():
             command = f"show ap summary | inc {args.name}"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
-            if args.debug: send_ios_syslog(severity=l_DEBUG,message=f"{cli_ap_summary}")
             time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
-            command = f"show ap cdp neighbor | inc {args.name}"
+            command = f"show ap name {args.name} cdp neighbor"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp = cli(command)
-            if args.debug: send_ios_syslog(severity=l_DEBUG,message=f"{cli_ap_cdp}")
+            command = f"show ap name {args.name} cdp neighbor detail"
+            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            cli_ap_cdp_detail = cli(command)
         else:
             command = f"show ap summary"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
-            if args.debug: send_ios_syslog(severity=l_DEBUG,message=f"{cli_ap_summary}")
             command = f"show ap cdp neighbor"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp = cli(command)
-            if args.debug: send_ios_syslog(severity=l_DEBUG,message=f"{cli_ap_cdp}")
+            command = f"show ap cdp neighbor detail"
+            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            cli_ap_cdp_detail = cli(command)
     else:
         with open(SIM_FILE_EEM_AP_SUMM) as file:
             cli_ap_summary = file.read()
         with open(SIM_FILE_EEM_AP_CDP) as file:
             cli_ap_cdp = file.read()
+        with open(SIM_FILE_EEM_AP_CDP_DETAIL) as file:
+            cli_ap_cdp_detail = file.read()
 
     ONLINE_APs = []
 
@@ -328,16 +338,45 @@ def main():
             online_ap['AP_NAME'] = match_cli_ap_summ.group(1)
             online_ap['AP_MODEL'] = match_cli_ap_summ.group(3)
 
-            for cdp_line in cli_ap_cdp.splitlines():
-                # look for Ether to be in the line to filter off other misc lines
-                f_regex = f"^({online_ap['AP_NAME']})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+Ether\S+)"
-                pattern = re.compile(f_regex)
-                match_cli_cdp = re.search(pattern, cdp_line)
-                if match_cli_cdp:
-                    online_ap['AP_CDP_SWITCH'] = match_cli_cdp.group(3).split(".")[0]
-                    online_ap['AP_CDP_SWITCH_PORT'] = match_cli_cdp.group(5)
-                    if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP Neighbor detected {online_ap}")
-            ONLINE_APs.append(online_ap)
+            # AP Name : TAMWAP057-132
+            # Device ID : TAMQFLHX08W.chtrse.com
+            # Interface : GigabitEthernet0, Port ID (outgoing port) : TenGigabitEthernet1/0/13
+
+            # assume we have a longer summary, as this will work for short or long output then
+            # as we are expecting some AP-s to be dual-enet, so need to find all matches
+            f_regex = rf"^AP Name\s+:\s+(\S+)"
+            pattern_AP_NAME = re.compile(f_regex)
+            f_regex = rf"^Device ID\s+:\s+(\S+)\."
+            pattern_AP_DEVICEID = re.compile(f_regex)
+            f_regex = rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)"
+            pattern_INTERFACE = re.compile(f_regex)
+
+            this_ap_name = None
+            for cdp_line in cli_ap_cdp_detail.splitlines():
+                # find the line that matches this AP
+                match_cli_cdp_ap = re.search(pattern_AP_NAME, cdp_line)
+                if match_cli_cdp_ap:
+                    this_ap_name = match_cli_cdp_ap.group(1)
+                # now process this block, but only for the AP looking for
+                if this_ap_name == online_ap['AP_NAME']:
+                    # Now continue to fetch the attached neighbor device basename
+                    match_cli_cdp_deviceid = re.search(pattern_AP_DEVICEID, cdp_line)
+                    if match_cli_cdp_deviceid:
+                        online_ap['AP_CDP_SWITCH'] = match_cli_cdp_deviceid.group(1).split(".")[0]
+                    match_cli_cdp_interface = re.search(pattern_INTERFACE, cdp_line)
+                    if match_cli_cdp_interface:
+                        online_ap['AP_CDP_SWITCH_PORT'] = match_cli_cdp_interface.group(2)
+                        online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = match_cli_cdp_interface.group(1)
+
+                        if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP Neighbor detected {online_ap}")
+                        # create a new object for appending
+                        append_online_ap = copy.deepcopy(online_ap)
+                        ONLINE_APs.append(append_online_ap)
+
+            # see if we already added this AP per a CDP hit, if not then added with CDP neighbor not known
+            match_ap = online_ap.matching_ap(criteria=['AP_NAME'], ap_list=[ online_ap ])
+            if not match_ap:
+                ONLINE_APs.append(online_ap)
 
     sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: x['AP_NAME'])
 
@@ -350,17 +389,11 @@ def main():
 
         # First look for a full match of all the criteria that is present
         criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-        if args.debug:
-            search_ap = "{"
-            for item in criteria:
-                if item in online_ap and online_ap[item]:
-                    search_ap = search_ap + f"'{item}: {online_ap[item]}', "
-            if args.debug:
-                send_ios_syslog(severity=l_DEBUG,
-                                message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {search_ap}")
+        if args.debug:send_ios_syslog(severity=l_DEBUG,
+                                      message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {criteria} {online_ap}")
         match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
 
-        do_rename_ap = False
+        do_rename_ap = None
         if match_ap:
             if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"MATCH_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
             if match_ap['AP_NAME'] != online_ap['AP_NAME']:
@@ -377,7 +410,7 @@ def main():
                     pass
 
         if do_rename_ap:
-            send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Change name {do_rename_ap['AP_NAME']} for {online_ap}")
+            send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Renaming to name {do_rename_ap['AP_NAME']} for {online_ap}")
             command = f"enable ; ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
             if args.debug:
                 # if debugging, don't actually make the change .. comment out command but send
@@ -397,6 +430,6 @@ def main():
 # ap name AP no dot11 5ghz slot 2 shutdown
 
 if __name__ == "__main__":
-    send_ios_syslog(severity=l_INFO, message=f"Starting ...")
+    send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
     main()
-    send_ios_syslog(severity=l_INFO, message=f"Finished ...")
+    send_ios_syslog(severity=l_INFO, message=f"Finished ... {sys.argv}")
