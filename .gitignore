@@ -1,6 +1,6 @@
 # personal shell things
 *.sh
-/eem_AP_Rename/experimental/
+experimental/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
