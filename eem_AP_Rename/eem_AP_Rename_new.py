@@ -107,8 +107,12 @@ import re
 import csv
 import time
 
+my_name = os.path.basename(sys.argv[0])
+
 # determine if running under IOS-XE guestshell
 is_guestshell = os.uname().nodename == 'guestshell'
+
+DEFAULT_INFILE = str(PurePath(my_name).parents) + PurePath(my_name).stem + '.csv'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
@@ -126,12 +130,9 @@ else:
         return ''
     def executep(command: str):
         return ''
-
-my_name = os.path.basename(sys.argv[0])
-if is_guestshell:
-    DEFAULT_INFILE = "/flash/guest-share/" + PurePath(my_name).stem + '.csv'
-else:
-    DEFAULT_INFILE = "./dev_" + PurePath(my_name).stem + '.csv'
+    SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
+    SIM_FILE_EEM_AP_CDP  = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
+    DEFAULT_INFILE = "./experimental/exp_" + PurePath(my_name).stem + '.csv'
 
 l_DEBUG  = 7
 l_INFO   = 6
@@ -159,28 +160,31 @@ else:
 
 def send_ios_syslog(message, severity=l_INFO):
     my_name = os.path.basename(sys.argv[0])
+    magic = ""
     if severity == l_DEBUG:  magic = s_DEBUG
     if severity == l_INFO:   magic = s_INFO
     if severity == l_NOTICE: magic = s_NOTICE
     if severity == l_WARN:   magic = s_WARN
     if severity == l_ERR:    magic = s_ERR
     if severity == l_CRIT:   magic = s_CRIT
-    # Construct the standard Cisco log prefix
-    if is_guestshell:
-        # TODO still working to figure out how to write to IOS-XE logging/syslog
-        try:
-            # Open the specific IOx serial pipe
-            with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
-                for line in message.splitlines():
-                    log_string = f"{magic}{my_name} {line}\n"
+
+    # TODO still working to figure out how to write to IOS-XE logging/syslog
+    try:
+        for line in message.splitlines():
+            log_string = f"{my_name} {line}"
+            if is_guestshell:
+                # Construct the standard Cisco log prefix
+                log_string = f"{magic}{my_name} {line}"
+                # Open the specific IOx serial pipe
+                with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
                     time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
+            else:
+                print(f"{log_string}")
+    except FileNotFoundError:
+        print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
 
-        except FileNotFoundError:
-            print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
-    else:
-        print(f"{log_string}")
 
 csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
               'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
@@ -199,17 +203,22 @@ class AccessPoint(dict):
         if isinstance(value,str): new_value = value.strip()
         super().__setitem__(key, new_value)
 
+    def match_ap_criteria(self, criteria=None, ap=None):
+        is_ap_criteria = False
+        match_ap = True
+        for aspect in criteria:
+            is_ap_criteria = is_ap_criteria or ap[aspect]
+            match_ap = match_ap and (
+                                      (ap[aspect] is None)
+                                      or ( ap[aspect] and re.match(rf"{ap[aspect]}", self[aspect]) )
+                                    )
+        return is_ap_criteria and match_ap
 
-class StrippedDict:
-    def __init__(self, data):
-        self.data = data
+    def matching_ap(self, criteria=None, ap_list=None):
+        match_ap = next( (ap for ap in ap_list if
+                         self.match_ap_criteria(criteria=criteria, ap=ap) ), None )
+        return match_ap
 
-    def __getitem__(self, key):
-        value = self.data[key]
-        # Automatically strip if the value is a text string
-        if isinstance(value, str):
-            return value.strip()
-        return value
 
 def main():
 
@@ -225,9 +234,6 @@ def main():
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
     args = parser.parse_args()
-
-    # TODO force args.debug whilst doing development work
-    args.debug = True
 
     NEW_APs = []
     # Open the CSV file for the desired AP mapping
@@ -265,9 +271,9 @@ def main():
             cli_ap_cdp = cli(command)
             if args.debug: send_ios_syslog(severity=l_DEBUG,message=f"{cli_ap_cdp}")
     else:
-        with open(f"./dev_AP_summary.txt") as file:
+        with open(SIM_FILE_EEM_AP_SUMM) as file:
             cli_ap_summary = file.read()
-        with open(f"./dev_AP_CDP.txt") as file:
+        with open(SIM_FILE_EEM_AP_CDP) as file:
             cli_ap_cdp = file.read()
 
     ONLINE_APs = []
@@ -300,48 +306,46 @@ def main():
         for ap in sorted_ONLINE_APs:
             send_ios_syslog(severity=l_DEBUG, message=f"ONLINE_APs has {ap}")
 
-
-    do_rename_ap = False
-
-    def matching_ap (criteria=None, online_ap=None, ap=None):
-        # assume not matching
-        match_ap = False
-        for aspect in criteria:
-            # if this not our criteria, move on.. or check it
-            if (
-                (ap[aspect])
-                and (
-                    (ap[aspect] is None)
-                    or (ap[aspect] and ap[aspect] in online_ap[aspect])
-                )
-            ):
-                match_ap = match_ap and True
-        return match_ap
-
     for online_ap in sorted_ONLINE_APs:
 
         # First look for a full match of all the criteria that is present
         criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_CDP_MAC_ENET', 'AP_CDP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-        if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"MATCH_AP Looking for full criteria match for ONLINE {online_ap}")
-        match_ap = next((ap for ap in NEW_APs
-                        matching_ap(criteria=criteria, online_ap=online_ap, ap=ap)
+        if args.debug:
+            search_ap = "{"
+            for item in criteria:
+                if item in online_ap and online_ap[item]:
+                    search_ap = search_ap + f"'{item}: {online_ap[item]}', "
+            send_ios_syslog(severity=l_DEBUG,
+                            message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {search_ap}")
+        # TODO match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
 
+        # TODO cripppled for now
+        match_ap = False
+
+        change_ap = None
+        do_rename_ap = False
         if match_ap:
-            if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CHANGE_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
+            if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"MATCH_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
             if match_ap['AP_NAME'] != online_ap['AP_NAME']:
                 change_ap = match_ap
                 do_rename_ap = True
 
-        # Now let's check for cases of partial specific combination match for the criteria that is present
-        if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"MATCH_AP Looking for partial criteria of matching switchport match for ONLINE {online_ap}")
+        # TODO cripppled for now
+        match_ap = False
+        if match_ap:
+            if match_ap['AP_DUAL_5GHZ'] == "Enabled":
+                # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
+                if match_ap['AP_MODEL'] == "CW9178I":
+                    pass
+                if match_ap['AP_MODEL'] == "CW9176D1":
+                    pass
 
         if do_rename_ap:
             send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Change name {change_ap['AP_NAME']} for {online_ap}")
             command = f"enable ; ap name {online_ap['AP_NAME']} name {change_ap['AP_NAME']}"
             if args.debug:
                 # if debugging, don't actually make the change .. comment out command but send
+                # TODO cripppled for now
                 command = "! CRIPPLED " + command
                 send_ios_syslog(severity=l_INFO, message=f"CHANGE_AP Sending {command}")
             cli("enable ; " + command)

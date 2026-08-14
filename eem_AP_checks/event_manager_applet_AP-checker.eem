@@ -140,6 +140,9 @@ no event manager applet AP_CHECKER_SPEED_DUPLEX
  action 0200.10.0        regexp "[^s]+\s+[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\s+([^\s]+)\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([^\s]+)" "$_cli_result" match cdp_nei_name cdp_nei_ip cdp_nei_port
  action 0200.10.1        if $_regexp_result eq "1"
  action 0200.10.9        end
+
+
+
  action 0400             comment Check speed/duplex
  action 0400.00          cli command "show ap name $ap_name ethernet statistics | inc Ether.*UP"
  action 0400.10.0        regexp ".*Ether.*UP\s+([^\s]+\s+Mbps)\s+([^\s]+)" "$_cli_result" match ap_speed ap_duplex
@@ -162,6 +165,15 @@ no event manager applet AP_CHECKER_SPEED_DUPLEX
  action 0400.10.3.9.2.1    wait 2
  action 0400.10.3.9.3     end
  action 0400.10.9        end
+
+ action 0500             comment Determine max speed expected
+ action 0500.10.2        set my_sw_speed_list "Ten:10000 Mbps, Two:2500 Mbps, Gig:1000 Mbps"
+ action 0500.20.0        foreach my_sw_speed [split $my_sw_speed_list ","]
+
+
+ action 0500.90.0        comment end foreach my_sw_speed
+ action 0500.90.9        end
+
  action 0990             comment end of foreach ap_name "$ap_list"
  action 0990.99         end
  action 9999.99.1       if $_event_type_string eq "syslog"

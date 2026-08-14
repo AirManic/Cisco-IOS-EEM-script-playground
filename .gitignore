@@ -1,5 +1,6 @@
 # personal shell things
 *.sh
+experimental
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
