@@ -1,5 +1,7 @@
 # personal shell things
 *.sh
+
+# development experimental files
 experimental/
 
 # Byte-compiled / optimized / DLL files
