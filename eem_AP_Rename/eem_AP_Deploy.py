@@ -116,6 +116,7 @@ my_name = os.path.basename(sys.argv[0])
 is_guestshell = os.uname().nodename == 'guestshell'
 
 DEFAULT_INFILE = str(PurePath(my_name).parents) + PurePath(my_name).stem + '.csv'
+DEFAULT_INFILE = PurePath(my_name).stem + '.csv'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
@@ -183,7 +184,7 @@ def send_ios_syslog(message=None, severity=l_INFO):
             log_string = f"{my_name} RunID {run_string} {line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
-                log_string = f"{magic}{my_name} {line}"
+                log_string = f"{magic}{log_string}\n"
                 # Open the specific IOx serial pipe
                 with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
                     syslog_pipe.write(log_string)
@@ -471,14 +472,17 @@ def main():
                                                            message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode}")
                             break
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
-                        send_ios_syslog(severity=l_DEBUG,
+                        send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                         command = " ! CRIPPLED ;"
-                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
-                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
-                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
-                        command = command + f" ! ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
-                        send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
+                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ;"
+                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable ;"
+                        command = command + f" ! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
+
+                        # for CW9178I
+                        # ap name AP dot11 5ghz dual-radio mode enable
+                        # ap name AP no dot11 5ghz slot 2 shutdown
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
                         cli("enable ; " + command)
                 elif match_ap['AP_MODEL'] == "CW9176D1":
                     # assume we have a longer summary, as this will work for short or long output then
@@ -523,19 +527,15 @@ def main():
                                                            message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                             break
                     if hit_ap and this_ap_slot_band != "5 GHz":
-                        send_ios_syslog(severity=l_DEBUG,
+                        send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                         command = " ! CRIPPLED ;"
                         command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
                         command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
                         command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
                         command = command + f" ! ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
-                        send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
                         cli("enable ; " + command)
-
-# for CW9178I
-# ap name AP dot11 5ghz dual-radio mode enable
-# ap name AP no dot11 5ghz slot 2 shutdown
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
