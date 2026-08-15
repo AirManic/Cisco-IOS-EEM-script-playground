@@ -529,11 +529,10 @@ def main():
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
                         # once we have the details, break out of the for loop
-                        hit_ap = this_ap_name == online_ap[
-                            'AP_NAME'] and this_ap_slot and this_ap_slot_admin
+                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_admin
                         if hit_ap:
-                            if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
+                            send_ios_syslog(severity=l_DEBUG,
+                                            message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
                             break
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
