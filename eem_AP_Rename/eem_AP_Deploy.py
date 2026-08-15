@@ -187,7 +187,9 @@ def send_ios_syslog(message=None, severity=l_INFO):
                 with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
-                    time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
+                    # move faster and drop a few messages if just debugging
+                    if not args.debug:
+                        time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
             else:
                 print(f"{log_string}")
     except FileNotFoundError:
