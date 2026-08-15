@@ -212,13 +212,14 @@ class AccessPoint(dict):
         if isinstance(value,str): new_value = value.strip()
         super().__setitem__(key, new_value)
 
-    def match_ap_criteria(self, criteria=None, ap=None, nitpick=False):
+    def match_ap_criteria(self, criteria=None, ap=None,):
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
         # track if there is at least one criteria item called out that matches
         is_ap_criteria = False
         # seed the match with True, as it will go False if there is a criteria item that does not match
+        ap_return = None
         match_ap = True
-        miss_match_ap = True
+        miss_match_ap = False
         for aspect in criteria:
             # make sure both devices being compared have valid aspect values, else will get error on fullmatch
             this_criteria_ap = ap[aspect] is not None and ap[aspect] != ''
@@ -227,41 +228,30 @@ class AccessPoint(dict):
             is_ap_criteria = is_ap_criteria or this_criteria_ap
             # see if we are missing a match due to lacking information that "ap" is calling out
             if this_criteria_ap and not this_criteria_self:
-                miss_match_ap = False
-                # no need to check any further, break loop
-                break
+                miss_match_ap = True
             # both AP-s being compared must have valid criteria to check, else fullmatch will error
             elif this_criteria_ap and this_criteria_self:
                 # now check it for a match, where anything that does not match will make it go False
-                match_ap = match_ap and ( (ap[aspect] is None or ap[aspect] == '')
-                                          or ( ap[aspect] and re.fullmatch(rf"{ap[aspect]}", self[aspect]) ) )
-            # if args.debug or (args.nitpick and nitpick):
-            #     send_ios_syslog(severity=l_DEBUG,
-            #                     message=f"match_ap_criteria() {aspect} is {match_ap} {self}")
-            # if one of the AP records being checked has this criteria, but the other one does not.. then false the match
-
+                match_ap = match_ap and ( not this_criteria_ap
+                                          or ( ap[aspect]
+                                               and re.fullmatch(rf"{ap[aspect]}", self[aspect]) is not None ) )
+            if not match_ap or miss_match_ap:
+                # no need to check any further, break loop
+                break
 
         # if had at least one item to match on.. and if all the items called out did match
-        got_a_solid_match = is_ap_criteria and match_ap and miss_match_ap
+        got_a_solid_match = is_ap_criteria and match_ap and not miss_match_ap
         # TODO concurrent
         if got_a_solid_match:
-            if args.debug or (args.nitpick and nitpick):
-                send_ios_syslog(severity=l_DEBUG,
-                                message=f"match_ap_criteria() matching {self['AP_NAME']} matches {ap['AP_NAME']} based on criteria {criteria}")
-                send_ios_syslog(severity=l_DEBUG,
-                                message=f"match_ap_criteria() matching {self} matches {ap}")
-        return got_a_solid_match
+            ap_return = ap
 
-    def matching_ap(self, criteria=None, ap_list=None, nitpick=False):
+        return ap_return
+
+    def matching_ap(self, criteria=None, ap_list=None):
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
         # TODO concurrent
-        for aspect in criteria:
-            if self[aspect] is None or self[aspect] == '':
-                if args.debug:
-                    send_ios_syslog(severity=l_DEBUG,
-                                    message=f"matching_ap() missing {aspect} {self['AP_NAME']}")
         match_ap = next( (ap for ap in ap_list if
-                         self.match_ap_criteria(criteria=criteria, ap=ap, nitpick=nitpick) ), None )
+                         self.match_ap_criteria(criteria=criteria, ap=ap) ), None )
         return match_ap
 
 
@@ -282,8 +272,6 @@ def main():
                         help=f"check only this specific AP name")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
-    parser.add_argument('-N', '--nitpick', required=False, action='store_true',
-                        help=f"print nitpick message")
     args = parser.parse_args()
 
     NEW_APs = []
@@ -317,7 +305,7 @@ def main():
             cli_ap_summary = cli(command)
             # TODO fix sleep
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sleeping 210 sec on {args.name} to wait for CDP information" )
-            if not args.nitpick: time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
+            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
             command = f"show ap name {args.name} cdp neighbor detail"
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp_detail = cli(command)
@@ -439,11 +427,11 @@ def main():
         # TODO concurrent
         if args.debug: send_ios_syslog(severity=l_DEBUG,
                                       message=f"DUAL_5GHZ Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {criteria} {online_ap}")
-        match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs, nitpick=True)
+        match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
         if match_ap:
             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                           message=f"DUAL_5GHZ GOT HIT dual-5GHz of ONLINE {online_ap['AP_NAME']} as AP_MODEL {match_ap['AP_MODEL']}")
-            if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1'] and match_ap['AP_DUAL_5GHZ'] == "Enable":
+                                           message=f"5GHZ GOT HIT dual-5GHz of ONLINE {online_ap['AP_NAME']} as AP_MODEL {match_ap['AP_MODEL']}")
+            if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1'] and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                 # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
                 if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                message=f"DUAL_5GHZ Checking dual-5GHz of ONLINE {online_ap['AP_NAME']} as AP_MODEL {match_ap['AP_MODEL']}")
