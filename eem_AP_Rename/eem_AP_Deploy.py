@@ -416,7 +416,7 @@ def main():
 
         if do_rename_ap:
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Renaming to name {do_rename_ap['AP_NAME']} for {online_ap}")
-            command = f"enable ; ! ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
+            command = f"enable ; ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
             cli("enable ; " + command)
 
@@ -485,20 +485,20 @@ def main():
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
-                        command = f"! ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ;"
+                        command = f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f"! ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable ;"
+                        command = f"ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f"! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
+                        command = f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz Slot 1 to Admin Enable of ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
-                        command = f"! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown ;"
+                        command = f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
@@ -539,7 +539,7 @@ def main():
                     if hit_ap and this_ap_slot_admin != "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz Slot 2 to Admin Enable of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
-                        command = f"! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
+                        command = f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
@@ -589,16 +589,16 @@ def main():
                     if hit_ap and this_ap_slot_band != "5 GHz":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
-                        command = f"! ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
+                        command = f"ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f"! ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
+                        command = f"ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f"! ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
+                        command = f"ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f"! ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
+                        command = f"ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
