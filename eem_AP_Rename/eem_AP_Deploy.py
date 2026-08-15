@@ -301,33 +301,33 @@ def main():
         # Retrieve the AP list from the WLC
         if args.name is not None and args.name != "None":
             command = f"show ap summary | inc {args.name}"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
             time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
             command = f"show ap name {args.name} cdp neighbor detail"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp_detail = cli(command)
             command = f"show ap name {args.name} ethernet statistics"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug:send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_ether_stats = cli(command)
             # for a single AP, have to loop thru the potential slots
             cli_ap_config_slot = ""
             for i in range(0, 4):
                 command = f"show ap name {args.name} config slot {i}"
-                send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+                if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
                 cli_ap_config_slot = cli_ap_config_slot + cli(command)
         else:
             command = f"show ap summary"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
             command = f"show ap cdp neighbor detail"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp_detail = cli(command)
             command = f"show ap ethernet statistics"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_ether_stats = cli(command)
             command = f"show ap config slot"
-            send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_config_slot = cli(command)
     else:
         with open(SIM_FILE_EEM_AP_SUMM) as file:
@@ -338,8 +338,6 @@ def main():
             cli_ap_ether_stats = file.read()
         with open(SIM_FILE_EEM_AP_CONFIG_SLOT) as file:
             cli_ap_config_slot = file.read()
-
-
 
     ONLINE_APs = []
 
@@ -438,10 +436,12 @@ def main():
                     #
 
                     # assume we have a longer summary, as this will work for short or long output then
+                    # Check Slot 1 first
                     hit_ap = None
                     this_ap_name = None
                     this_ap_slot = None
                     this_ap_slot_dual_mode = None
+                    this_ap_slot_admin = None
                     for slot_line in cli_ap_config_slot.splitlines():
                         f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
                         pattern_AP_NAME = re.compile(f_regex)
@@ -449,11 +449,15 @@ def main():
                         pattern_AP_SLOT = re.compile(f_regex)
                         f_regex = rf"^\s+Dual Radio Mode\s+:\s+(.*)"
                         pattern_AP_SLOT_DUAL_ROLE = re.compile(f_regex)
+                        f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
+                        pattern_AP_SLOT_ADMIN = re.compile(f_regex)
+                        #   Administrative State                          : Disabled
 
                         # find the line that matches this AP
                         match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
                         match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
                         match_cli_ap_slot_dual_role = re.search(pattern_AP_SLOT_DUAL_ROLE, slot_line)
+                        match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, slot_line)
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
                         # now process this block, but only for the AP looking for
@@ -461,16 +465,17 @@ def main():
                             this_ap_slot = match_cli_ap_slot.group(1)
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_dual_role:
                             this_ap_slot_dual_mode = match_cli_ap_slot_dual_role.group(1).strip()
-
+                        if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
+                            this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
                         # once we have the details, break out of the for loop
-                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_dual_mode
+                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_dual_mode and this_ap_slot_admin
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode}")
+                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                             break
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                         command = f" ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
                         cli("enable ; " + command)
@@ -480,6 +485,56 @@ def main():
                         command = f" ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
                         cli("enable ; " + command)
+
+                    if hit_ap and this_ap_slot_admin != "Enabled":
+                        send_ios_syslog(severity=l_INFO,
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz Slot 1 to Admin Enable of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
+                        command = f" ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        cli("enable ; " + command)
+
+                    # assume we have a longer summary, as this will work for short or long output then
+                    # Now check Slot 2
+                    hit_ap = None
+                    this_ap_name = None
+                    this_ap_slot = None
+                    this_ap_slot_dual_mode = None
+                    for slot_line in cli_ap_config_slot.splitlines():
+                        f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
+                        pattern_AP_NAME = re.compile(f_regex)
+                        f_regex = rf"^Attributes for Slot (2)"
+                        pattern_AP_SLOT = re.compile(f_regex)
+                        f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
+                        pattern_AP_SLOT_ADMIN = re.compile(f_regex)
+                        #   Administrative State                          : Disabled
+
+                        # find the line that matches this AP
+                        match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
+                        match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
+                        match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, slot_line)
+                        if match_cli_ap_name:
+                            this_ap_name = match_cli_ap_name.group(1)
+                        # now process this block, but only for the AP looking for
+                        if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot:
+                            this_ap_slot = match_cli_ap_slot.group(1)
+                        if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
+                            this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
+                        # once we have the details, break out of the for loop
+                        hit_ap = this_ap_name == online_ap[
+                            'AP_NAME'] and this_ap_slot and this_ap_slot_admin
+                        if hit_ap:
+                            if args.debug: send_ios_syslog(severity=l_DEBUG,
+                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
+                            break
+
+                    if hit_ap and this_ap_slot_admin != "Enabled":
+                        send_ios_syslog(severity=l_INFO,
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz Slot 2 to Admin Enable of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
+                        command = f" ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        cli("enable ; " + command)
+
+
                 elif match_ap['AP_MODEL'] == "CW9176D1":
                     # assume we have a longer summary, as this will work for short or long output then
                     hit_ap = None
