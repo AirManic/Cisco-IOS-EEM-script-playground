@@ -428,22 +428,60 @@ def main():
         if match_ap:
             if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1'] and match_ap['AP_DUAL_5GHZ'] == "Enable":
                 # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
-                send_ios_syslog(severity=l_DEBUG,
-                                message=f"DUAL_5GHZ Checking dual-5GHz of ONLINE {online_ap['AP_NAME']} as AP_MODEL {match_ap['AP_MODEL']}")
+                if args.debug: send_ios_syslog(severity=l_DEBUG,
+                                               message=f"DUAL_5GHZ Checking dual-5GHz of ONLINE {online_ap['AP_NAME']} as AP_MODEL {match_ap['AP_MODEL']}")
                 if match_ap['AP_MODEL'] == "CW9178I":
-                    pass
-                # cli_ap_config_slot
+
+                    # Attributes for Slot 1
+                    #   Dual Radio Mode                               : Disabled
+                    #
+                    # Attributes for Slot 1
+                    #   Dual Radio Mode                               : Enabled
+                    #
+
+                    # assume we have a longer summary, as this will work for short or long output then
+                    hit_ap = None
+                    this_ap_name = None
+                    this_ap_slot = None
+                    this_ap_slot_dual_mode = None
+                    for slot_line in cli_ap_config_slot.splitlines():
+                        f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
+                        pattern_AP_NAME = re.compile(f_regex)
+                        f_regex = rf"^Attributes for Slot (1)"
+                        pattern_AP_SLOT = re.compile(f_regex)
+                        f_regex = rf"^\s+Dual Radio Mode\s+:\s+(.*)"
+                        pattern_AP_SLOT_DUAL_ROLE = re.compile(f_regex)
+
+                        # find the line that matches this AP
+                        match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
+                        match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
+                        match_cli_ap_slot_dual_role = re.search(pattern_AP_SLOT_DUAL_ROLE, slot_line)
+                        if match_cli_ap_name:
+                            this_ap_name = match_cli_ap_name.group(1)
+                        # now process this block, but only for the AP looking for
+                        if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot:
+                            this_ap_slot = match_cli_ap_slot.group(1)
+                        if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_dual_role:
+                            this_ap_slot_dual_mode = match_cli_ap_slot_dual_role.group(1).strip()
+
+                        # once we have the details, break out of the for loop
+                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_dual_mode
+                        if hit_ap:
+                            if args.debug: send_ios_syslog(severity=l_DEBUG,
+                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode}")
+                            break
+                    if hit_ap and this_ap_slot_dual_mode != "Enabled":
+                        send_ios_syslog(severity=l_DEBUG,
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
+                        command = " ! CRIPPLED ;"
+                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
+                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
+                        command = command + f" ! ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
+                        command = command + f" ! ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
+                        send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
+                        cli("enable ; " + command)
                 elif match_ap['AP_MODEL'] == "CW9176D1":
                     # assume we have a longer summary, as this will work for short or long output then
-                    # as we are expecting some AP-s to be dual-enet, so need to find all matches
-
-
-                    # Cisco AP Name                                   : TAMWAP422-349
-                    # Attributes for Slot 0
-                    #   Radio Role                                    : Client Serving
-                    #     Assignment Method                           : Manual
-                    #     Band                                        : 5 GHz
-
                     hit_ap = None
                     this_ap_name = None
                     this_ap_slot = None
