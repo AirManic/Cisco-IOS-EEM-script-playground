@@ -101,7 +101,7 @@ guestshell enable
 
 import argparse
 import os
-from pathlib import PurePath
+from pathlib import Path
 import sys
 import re
 import csv
@@ -115,8 +115,7 @@ my_name = os.path.basename(sys.argv[0])
 # determine if running under IOS-XE guestshell
 is_guestshell = os.uname().nodename == 'guestshell'
 
-DEFAULT_INFILE = str(PurePath(my_name).parents) + PurePath(my_name).stem + '.csv'
-DEFAULT_INFILE = PurePath(my_name).stem + '.csv'
+DEFAULT_INFILE = "./" + Path(my_name).stem + '.csv'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
@@ -134,7 +133,7 @@ else:
         return ''
     def executep(command: str):
         return ''
-    DEFAULT_INFILE = "./experimental/exp_" + PurePath(my_name).stem + '.csv'
+    DEFAULT_INFILE = "./experimental/exp_" + Path(my_name).stem + '.csv'
     SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
     SIM_FILE_EEM_AP_CDP = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
     SIM_FILE_EEM_AP_ETHER_STATS = f"./experimental/exp_eem_AP_ethernet_stats.txt"
@@ -169,7 +168,6 @@ else:
 global run_string
 run_string = ''.join(random.choices(string.digits, k=5))
 def send_ios_syslog(message=None, severity=l_INFO):
-    my_name = os.path.basename(sys.argv[0])
     magic = ""
     if severity == l_DEBUG:  magic = s_DEBUG
     if severity == l_INFO:   magic = s_INFO
@@ -258,6 +256,7 @@ class AccessPoint(dict):
         return match_ap
 
 
+args = None
 def main():
 
     # make args global so we can use outside this scope
@@ -279,7 +278,7 @@ def main():
     NEW_APs = []
 
     # Open the CSV file for the desired AP mapping
-    with open(f"{args.infile_csv}",mode='r', encoding='utf-8') as csvfile:
+    with open(args.infile_csv) as csvfile:
         # Read and clean the first row (header) keys
         header_line = csvfile.readline()
         raw_headers = next(csv.reader([header_line]))
