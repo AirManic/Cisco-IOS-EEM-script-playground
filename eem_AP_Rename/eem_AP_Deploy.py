@@ -299,7 +299,7 @@ def main():
 
     if is_guestshell:
         # Retrieve the AP list from the WLC
-        if args.name != None and args.name != "None":
+        if args.name is not None and args.name != "None":
             command = f"show ap summary | inc {args.name}"
             send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
