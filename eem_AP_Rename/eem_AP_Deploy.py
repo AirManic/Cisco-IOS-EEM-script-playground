@@ -72,7 +72,7 @@ no event manager applet eem_AP_Rename
   correlate event NONE or event CRON or event SYS1 or event SYS2
  action 000.000   syslog msg "Started event trigger $_event_type_string"
  action 000.000.1 cli command "enable"
- action 200.000.1 set find_ap_name "None"
+ action 200.000.1 set find_ap_name "ALL"
  action 200.040.1 if $_event_type_string eq "syslog"
  action 200.040.2  regexp "CAPWAPAC_SMGR_TRACE_MESSAGE-5-AP_JOIN_DISJOIN.*AP Name:\s+([^\s]+)\s+.*Joined" "$_syslog_msg" match find_ap_name
  action 200.090   end
@@ -188,8 +188,7 @@ def send_ios_syslog(message=None, severity=l_INFO):
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
                     # move faster and drop a few messages if just debugging
-                    if not args.debug:
-                        time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
+                    time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
             else:
                 print(f"{log_string}")
     except FileNotFoundError:
@@ -213,48 +212,56 @@ class AccessPoint(dict):
         if isinstance(value,str): new_value = value.strip()
         super().__setitem__(key, new_value)
 
-    def match_ap_criteria(self, criteria=None, ap=None):
+    def match_ap_criteria(self, criteria=None, ap=None, nitpick=False):
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
         # track if there is at least one criteria item called out that matches
         is_ap_criteria = False
         # seed the match with True, as it will go False if there is a criteria item that does not match
         match_ap = True
+        miss_match_ap = True
         for aspect in criteria:
             # make sure both devices being compared have valid aspect values, else will get error on fullmatch
             this_criteria_ap = ap[aspect] is not None and ap[aspect] != ''
             this_criteria_self = self[aspect] is not None and self[aspect] != ''
             # make note once have at least one criteria to match of value of ONLY the AP trying to match
             is_ap_criteria = is_ap_criteria or this_criteria_ap
-
+            # see if we are missing a match due to lacking information that "ap" is calling out
+            if this_criteria_ap and not this_criteria_self:
+                miss_match_ap = False
+                # no need to check any further, break loop
+                break
             # both AP-s being compared must have valid criteria to check, else fullmatch will error
-            if this_criteria_ap and this_criteria_self:
+            elif this_criteria_ap and this_criteria_self:
                 # now check it for a match, where anything that does not match will make it go False
                 match_ap = match_ap and ( (ap[aspect] is None or ap[aspect] == '')
                                           or ( ap[aspect] and re.fullmatch(rf"{ap[aspect]}", self[aspect]) ) )
+            # if args.debug or (args.nitpick and nitpick):
+            #     send_ios_syslog(severity=l_DEBUG,
+            #                     message=f"match_ap_criteria() {aspect} is {match_ap} {self}")
             # if one of the AP records being checked has this criteria, but the other one does not.. then false the match
-            if ( (not this_criteria_ap and this_criteria_self)
-                or (this_criteria_ap and not this_criteria_self) ):
-                match_ap = False
+
 
         # if had at least one item to match on.. and if all the items called out did match
-        got_a_solid_match = is_ap_criteria and match_ap
+        got_a_solid_match = is_ap_criteria and match_ap and miss_match_ap
+        # TODO concurrent
         if got_a_solid_match:
-            if args.debug:
+            if args.debug or (args.nitpick and nitpick):
                 send_ios_syslog(severity=l_DEBUG,
                                 message=f"match_ap_criteria() matching {self['AP_NAME']} matches {ap['AP_NAME']} based on criteria {criteria}")
                 send_ios_syslog(severity=l_DEBUG,
                                 message=f"match_ap_criteria() matching {self} matches {ap}")
         return got_a_solid_match
 
-    def matching_ap(self, criteria=None, ap_list=None):
+    def matching_ap(self, criteria=None, ap_list=None, nitpick=False):
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
+        # TODO concurrent
         for aspect in criteria:
             if self[aspect] is None or self[aspect] == '':
                 if args.debug:
                     send_ios_syslog(severity=l_DEBUG,
                                     message=f"matching_ap() missing {aspect} {self['AP_NAME']}")
         match_ap = next( (ap for ap in ap_list if
-                         self.match_ap_criteria(criteria=criteria, ap=ap) ), None )
+                         self.match_ap_criteria(criteria=criteria, ap=ap, nitpick=nitpick) ), None )
         return match_ap
 
 
@@ -275,6 +282,8 @@ def main():
                         help=f"check only this specific AP name")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
+    parser.add_argument('-N', '--nitpick', required=False, action='store_true',
+                        help=f"print nitpick message")
     args = parser.parse_args()
 
     NEW_APs = []
@@ -289,10 +298,11 @@ def main():
         for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
             NEW_APs.append(AccessPoint(ap))
 
-    if args.debug:
-        send_ios_syslog(severity=l_DEBUG, message=f"{len(NEW_APs)} APs from infile_csv {args.infile_csv}")
-        for ap in NEW_APs:
-            send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {ap['AP_NAME']} {ap}")
+    # TODO concurrent
+    # if args.debug:
+    #     send_ios_syslog(severity=l_DEBUG, message=f"{len(NEW_APs)} APs from infile_csv {args.infile_csv}")
+    #     for ap in NEW_APs:
+    #         send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {ap['AP_NAME']} {ap}")
 
     cli_ap_summary = None
     cli_ap_cdp_detail = None
@@ -301,11 +311,13 @@ def main():
 
     if is_guestshell:
         # Retrieve the AP list from the WLC
-        if args.name is not None and args.name != "None":
+        if args.name is not None and args.name != "ALL":
             command = f"show ap summary | inc {args.name}"
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_summary = cli(command)
-            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
+            # TODO fix sleep
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sleeping 210 sec on {args.name} to wait for CDP information" )
+            if not args.nitpick: time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
             command = f"show ap name {args.name} cdp neighbor detail"
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Looking for {command}" )
             cli_ap_cdp_detail = cli(command)
@@ -379,7 +391,8 @@ def main():
                         online_ap['AP_CDP_SWITCH_PORT'] = match_cli_cdp_interface.group(2)
                         online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = match_cli_cdp_interface.group(1)
 
-                        if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP Neighbor detected {online_ap}")
+                        # TODO concurrent
+                        # if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP Neighbor detected {online_ap}")
                         # create a new object for appending
                         append_online_ap = copy.deepcopy(online_ap)
                         ONLINE_APs.append(append_online_ap)
@@ -393,26 +406,29 @@ def main():
 
     if args.debug:
         send_ios_syslog(severity=l_DEBUG, message=f"{len(ONLINE_APs)} online APs in ONLINE_APs")
-        for ap in sorted_ONLINE_APs:
-            send_ios_syslog(severity=l_DEBUG, message=f"ONLINE_APs has {ap}")
+        # TODO concurrent
+        # for ap in sorted_ONLINE_APs:
+        #     send_ios_syslog(severity=l_DEBUG, message=f"ONLINE_APs has {ap}")
 
     for online_ap in sorted_ONLINE_APs:
         # in this loop, will only look for AP-s that need to be renamed, so match does not include AP_NAME itself
         # First look for a full match of all the criteria that is present
         criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-        if args.debug:send_ios_syslog(severity=l_DEBUG,
-                                      message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {criteria} {online_ap}")
+        # TODO concurrent
+        # if args.debug:send_ios_syslog(severity=l_DEBUG,
+        #                               message=f"MATCH_AP Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {criteria} {online_ap}")
         match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
 
         do_rename_ap = None
         if match_ap:
-            if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"MATCH_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
+            # TODO concurrent
+            # if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"MATCH_AP Found match NEW_AP {match_ap} as ONLINE {online_ap}")
             if match_ap['AP_NAME'] != online_ap['AP_NAME']:
                 do_rename_ap = match_ap
 
         if do_rename_ap:
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Renaming to name {do_rename_ap['AP_NAME']} for {online_ap}")
-            command = f"enable ; ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
+            command = f"enable ; ! ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}"
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
             cli("enable ; " + command)
 
@@ -420,10 +436,13 @@ def main():
         # in this loop, will only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
         # First look for a full match of all the criteria that is present
         criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
+        # TODO concurrent
         if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"DUAL_5GHZ Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {criteria} {online_ap}")
-        match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
+                                      message=f"DUAL_5GHZ Looking match of ONLINE {online_ap['AP_NAME']} in the NEW_APs list criteria {criteria} {online_ap}")
+        match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs, nitpick=True)
         if match_ap:
+            if args.debug: send_ios_syslog(severity=l_DEBUG,
+                                           message=f"DUAL_5GHZ GOT HIT dual-5GHz of ONLINE {online_ap['AP_NAME']} as AP_MODEL {match_ap['AP_MODEL']}")
             if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1'] and match_ap['AP_DUAL_5GHZ'] == "Enable":
                 # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
                 if args.debug: send_ios_syslog(severity=l_DEBUG,
@@ -473,26 +492,26 @@ def main():
                         hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_dual_mode and this_ap_slot_admin
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
+                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                             break
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
-                        command = f" ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
+                        command = f"! ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f" ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        command = f"! ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f" ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        command = f"! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ Changing to dual-5GHz Slot 1 to Admin Enable of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
-                        command = f" ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz Slot 1 to Admin Enable of ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
+                        command = f"! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
                     # assume we have a longer summary, as this will work for short or long output then
@@ -526,14 +545,14 @@ def main():
                             'AP_NAME'] and this_ap_slot and this_ap_slot_admin
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
+                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
                             break
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ Changing to dual-5GHz Slot 2 to Admin Enable of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
-                        command = f" ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz Slot 2 to Admin Enable of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
+                        command = f"! ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
 
@@ -577,22 +596,22 @@ def main():
                         hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_role and this_ap_slot_method and this_ap_slot_band
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
+                                                           message=f"DUAL_5GHZ Found dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                             break
                     if hit_ap and this_ap_slot_band != "5 GHz":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
-                        command = f" ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                                        message=f"DUAL_5GHZ Changing to dual-5GHz of ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
+                        command = f"! ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f" ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        command = f"! ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f" ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        command = f"! ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ;"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
-                        command = f" ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending cli([{command}])")
+                        command = f"! ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
+                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
 
 if __name__ == "__main__":
