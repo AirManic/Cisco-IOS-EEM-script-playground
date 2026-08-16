@@ -608,7 +608,7 @@ def main():
                 if match_cli_ap_tilt:
                     online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
                 send_ios_syslog(severity=l_DEBUG,
-                                message=f"TILT ONLINE {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
+                                message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
