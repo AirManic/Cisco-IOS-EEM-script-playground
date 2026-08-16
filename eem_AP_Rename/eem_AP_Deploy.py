@@ -597,16 +597,14 @@ def main():
             command = f"show ap name {online_ap['AP_NAME']} accelerometer"
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching {command}")
             cli_ap_accel_detail = cli(command)
-
-            # Tilt angle          : 3 Degree(s)
-            # Last update         : 08/15/2026 21:19:30
-
             for slot_line in cli_ap_accel_detail.splitlines():
                 f_regex = rf"^Tilt angle\s+:\s+(.*)"
                 pattern_AP_TILT = re.compile(f_regex)
                 match_cli_ap_tilt = re.search(pattern_AP_TILT, slot_line)
                 if match_cli_ap_tilt:
                     online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
+                else:
+                    online_ap['AP_TILT'] = None
                 send_ios_syslog(severity=l_DEBUG,
                                 message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
 
