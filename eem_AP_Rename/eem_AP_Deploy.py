@@ -179,7 +179,7 @@ def send_ios_syslog(message=None, severity=l_INFO):
     # TODO still working to figure out how to write to IOS-XE logging/syslog
     try:
         for line in message.splitlines():
-            log_string = f"{my_name} RunID {run_string} {line}"
+            log_string = f"{my_name} RandRunID {run_string} {line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
                 log_string = f"{magic}{log_string}\n"
