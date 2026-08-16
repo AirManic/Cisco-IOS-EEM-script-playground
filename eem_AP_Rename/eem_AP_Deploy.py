@@ -148,41 +148,15 @@ l_WARN   = 4
 l_ERR    = 3
 l_CRIT   = 2
 
-if is_guestshell:
-    # /dev/ttyS2 format for for syslogd magic number is a123b234 with version 1 then level
-    s_DEBUG  = f"[a123b234,1,{l_DEBUG}]"
-    s_INFO   = f"[a123b234,1,{l_INFO}]"
-    s_NOTICE = f"[a123b234,1,{l_NOTICE}]"
-    s_WARN   = f"[a123b234,1,{l_WARN}]"
-    s_ERR    = f"[a123b234,1,{l_ERR}]"
-    s_CRIT   = f"[a123b234,1,{l_CRIT}]"
-else:
-    # Use this for local testing
-    s_DEBUG  = f"DEBUG"
-    s_INFO   = f"INFO"
-    s_NOTICE = f"NOTICE"
-    s_WARN   = f"WARN"
-    s_ERR    = f"ERR"
-    s_CRIT   = f"CRIT"
-
 global run_string
 run_string = ''.join(random.choices(string.digits, k=5))
 def send_ios_syslog(message=None, severity=l_INFO):
-    magic = ""
-    if severity == l_DEBUG:  magic = s_DEBUG
-    if severity == l_INFO:   magic = s_INFO
-    if severity == l_NOTICE: magic = s_NOTICE
-    if severity == l_WARN:   magic = s_WARN
-    if severity == l_ERR:    magic = s_ERR
-    if severity == l_CRIT:   magic = s_CRIT
-
-    # TODO still working to figure out how to write to IOS-XE logging/syslog
     try:
         for line in message.splitlines():
             log_string = f"{my_name} RandRunID {run_string} {line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
-                log_string = f"{magic}{log_string}\n"
+                log_string = f"[a123b234,1,{severity}]{log_string}\n"
                 # Open the specific IOx serial pipe
                 with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
                     syslog_pipe.write(log_string)
@@ -190,7 +164,15 @@ def send_ios_syslog(message=None, severity=l_INFO):
                     # move faster and drop a few messages if just debugging
                     time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
             else:
-                print(f"{log_string}")
+                sev_string = {
+                    l_DEBUG : "DEBUG",
+                    l_INFO : "INFO",
+                    l_NOTICE : "NOTICE",
+                    l_WARN : "WARN",
+                    l_ERR : "ERR",
+                    l_CRIT : "CRIT"
+                }
+                print(f"{sev_string[severity]} {log_string}")
     except FileNotFoundError:
         print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
 
@@ -359,88 +341,92 @@ def main():
     # Sort them for added sanity to process loops in a way most humans think
     sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: x['AP_NAME'])
 
-    # TODO concurrent
-    # Fetch the CDP neighbor(s)
-    for online_ap in sorted_ONLINE_APs:
+    def get_ap_cdp(online_ap=None):
+            if online_ap is None: return
+            if 'AP_CDP_SWITCH' not in online_ap.keys():
+                online_ap['AP_CDP_SWITCH'] = None
+            if 'AP_CDP_SWITCH_PORT' not in online_ap.keys():
+                online_ap['AP_CDP_SWITCH_PORT'] = None
+            if 'AP_CDP_SWITCH_PORT_LOCAL' not in online_ap.keys():
+                online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = None
+            # assume we have a longer summary, as this will work for short or long output then
+            # as we are expecting some AP-s to be dual-enet, so need to find all matches
+            f_regex = rf"^AP Name\s+:\s+(\S+)"
+            pattern_AP_NAME = re.compile(f_regex)
+            f_regex = rf"^Device ID\s+:\s+(\S+)\."
+            pattern_AP_DEVICEID = re.compile(f_regex)
+            f_regex = rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)"
+            pattern_INTERFACE = re.compile(f_regex)
 
-        if 'AP_CDP_SWITCH' not in online_ap.keys():
-            online_ap['AP_CDP_SWITCH'] = None
-        if 'AP_CDP_SWITCH_PORT' not in online_ap.keys():
-            online_ap['AP_CDP_SWITCH_PORT'] = None
-        if 'AP_CDP_SWITCH_PORT_LOCAL' not in online_ap.keys():
-            online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = None
+            this_ap_name = None
+            this_ap_cdp_switch = None
+            this_ap_cdp_switch_port = None
+            this_ap_cdp_switch_port_local = None
+            for cdp_line in cli_ap_cdp_detail.splitlines():
+                # find the line that matches this AP
+                match_cli_cdp_ap = re.search(pattern_AP_NAME, cdp_line)
+                if match_cli_cdp_ap:
+                    this_ap_name = match_cli_cdp_ap.group(1)
+                    this_ap_cdp_switch = None
+                    this_ap_cdp_switch_port = None
+                    this_ap_cdp_switch_port_local = None
+                # now process this block, but only for the AP looking for
+                if this_ap_name == online_ap['AP_NAME']:
+                    # Now continue to fetch the attached neighbor device basename
+                    match_cli_cdp_deviceid = re.search(pattern_AP_DEVICEID, cdp_line)
+                    if match_cli_cdp_deviceid:
+                        this_ap_cdp_switch = match_cli_cdp_deviceid.group(1).split(".")[0]
+                    match_cli_cdp_interface = re.search(pattern_INTERFACE, cdp_line)
+                    if match_cli_cdp_interface:
+                        this_ap_cdp_switch_port = match_cli_cdp_interface.group(2)
+                        this_ap_cdp_switch_port_local = match_cli_cdp_interface.group(1)
+                hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_cdp_switch and this_ap_cdp_switch_port and this_ap_cdp_switch_port_local
 
-        # assume we have a longer summary, as this will work for short or long output then
-        # as we are expecting some AP-s to be dual-enet, so need to find all matches
-        f_regex = rf"^AP Name\s+:\s+(\S+)"
-        pattern_AP_NAME = re.compile(f_regex)
-        f_regex = rf"^Device ID\s+:\s+(\S+)\."
-        pattern_AP_DEVICEID = re.compile(f_regex)
-        f_regex = rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)"
-        pattern_INTERFACE = re.compile(f_regex)
+                # create a new object for checking and potentially appending
+                prep_online_ap = copy.deepcopy(online_ap)
+                prep_online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
+                prep_online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
+                prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
 
-        this_ap_name = None
-        this_ap_cdp_switch = None
-        this_ap_cdp_switch_port = None
-        this_ap_cdp_switch_port_local = None
-        for cdp_line in cli_ap_cdp_detail.splitlines():
-            # find the line that matches this AP
-            match_cli_cdp_ap = re.search(pattern_AP_NAME, cdp_line)
-            if match_cli_cdp_ap:
-                this_ap_name = match_cli_cdp_ap.group(1)
-                this_ap_cdp_switch = None
-                this_ap_cdp_switch_port = None
-                this_ap_cdp_switch_port_local = None
-            # now process this block, but only for the AP looking for
-            if this_ap_name == online_ap['AP_NAME']:
-                # Now continue to fetch the attached neighbor device basename
-                match_cli_cdp_deviceid = re.search(pattern_AP_DEVICEID, cdp_line)
-                if match_cli_cdp_deviceid:
-                    this_ap_cdp_switch = match_cli_cdp_deviceid.group(1).split(".")[0]
-                match_cli_cdp_interface = re.search(pattern_INTERFACE, cdp_line)
-                if match_cli_cdp_interface:
-                    this_ap_cdp_switch_port = match_cli_cdp_interface.group(2)
-                    this_ap_cdp_switch_port_local = match_cli_cdp_interface.group(1)
-            hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_cdp_switch and this_ap_cdp_switch_port and this_ap_cdp_switch_port_local
-
-            # create a new object for checking and potentially appending
-            prep_online_ap = copy.deepcopy(online_ap)
-            prep_online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-            prep_online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
-            prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
-
-            if hit_ap:
-                if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {prep_online_ap}")
-                # see if we already added this AP per a CDP hit, if not then added with CDP neighbor not known
-                match_ap = online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'], ap_list=[prep_online_ap])
-                if match_ap:
-                    match_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-                    match_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
-                    match_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
-                elif not online_ap['AP_CDP_SWITCH_PORT_LOCAL']:
-                    online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-                    online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
-                    online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
-                else:
-                    ONLINE_APs.append(prep_online_ap)
-                # reset this_ap_name to look for the next hit
-                this_ap_name = None
-
-    for online_ap in sorted_ONLINE_APs:
-        pass
-    # TAMQFLHXC3W#show ap name TAMWAP422-349 inventory
-    # NAME: CW9176, DESCR: Cisco Catalyst 9176 Series Access Point
-    # PID: CW9176D1, VID: 01, SN: WTT294009HU
-    #
+                if hit_ap:
+                    if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {prep_online_ap}")
+                    # see if we already added this AP per a CDP hit, if not then added with CDP neighbor not known
+                    match_ap = online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'], ap_list=[prep_online_ap])
+                    if match_ap:
+                        match_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
+                        match_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
+                        match_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+                    elif not online_ap['AP_CDP_SWITCH_PORT_LOCAL']:
+                        online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
+                        online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
+                        online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+                    else:
+                        ONLINE_APs.append(prep_online_ap)
+                    # reset this_ap_name to look for the next hit
+                    this_ap_name = None
 
     # TODO concurrent
     for online_ap in sorted_ONLINE_APs:
-        # don't run the loop if args not present
-        if not args.accel: break
+        get_ap_cdp(online_ap)
+
+    def get_ap_serial(online_ap=None):
+        if online_ap is None: return
+        # TAMQFLHXC3W#show ap name TAMWAP422-349 inventory
+        # NAME: CW9176, DESCR: Cisco Catalyst 9176 Series Access Point
+        # PID: CW9176D1, VID: 01, SN: WTT294009HU
+        #
+
+    # TODO concurrent
+    for online_ap in sorted_ONLINE_APs:
+        get_ap_serial(online_ap)
+
+    def get_tilt(online_ap=None):
+        if online_ap is None: return
         online_ap['AP_TILT'] = None
         command = f"show ap name {online_ap['AP_NAME']} accelerometer"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
-        cli_ap_accel_detail = cli(command) ; command = ""
+        cli_ap_accel_detail = cli(command);
+        command = ""
         for slot_line in cli_ap_accel_detail.splitlines():
             f_regex = rf"^Tilt angle\s+:\s+(.*)"
             pattern_AP_TILT = re.compile(f_regex)
@@ -452,8 +438,13 @@ def main():
 
     # TODO concurrent
     for online_ap in sorted_ONLINE_APs:
-        # in this loop, will only look for AP-s that need to be renamed, so match does not include AP_NAME itself
+        if not args.accel: break
+        get_tilt(online_ap)
+
+    def do_ap_rename(online_ap=None):
+        if online_ap is None: return
         # First look for a full match of all the criteria that is present
+        # only look for AP-s that need to be renamed, so match does not include AP_NAME itself
         criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
         if args.debug:send_ios_syslog(severity=l_DEBUG,
                                       message=f"MATCH_AP ONLINE {online_ap['AP_NAME']} in NEW_APs criteria {criteria} {online_ap}")
@@ -475,8 +466,12 @@ def main():
 
     # TODO concurrent
     for online_ap in sorted_ONLINE_APs:
-        # in this loop, will only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
+        do_ap_rename(online_ap)
+
+    def do_dual_5ghz(online_ap=None):
+        if online_ap is None: return
         # First look for a full match of all the criteria that is present
+        # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
         criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
         if args.debug: send_ios_syslog(severity=l_DEBUG,
                                       message=f"DUAL_5GHZ Matching ONLINE {online_ap['AP_NAME']} in NEW_APs criteria {criteria} {online_ap}")
@@ -674,10 +669,11 @@ def main():
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli(command) ; command = ""
 
+    # TODO concurrent
+    for online_ap in sorted_ONLINE_APs:
+        do_dual_5ghz(online_ap)
 
     if args.debug: send_ios_syslog(severity=l_INFO, message=f"ONLINE_APs length is {len(ONLINE_APs)}")
-
-    ONLINE_APs
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
