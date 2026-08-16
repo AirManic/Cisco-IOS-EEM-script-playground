@@ -594,7 +594,7 @@ def main():
     if args.accel:
         # TODO concurrent
         for online_ap in sorted_ONLINE_APs:
-            command = f"show ap name {online_ap} accelerometer"
+            command = f"show ap name {online_ap['AP_NAME']} accelerometer"
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching {command}")
             cli_ap_accel_detail = cli(command)
 
