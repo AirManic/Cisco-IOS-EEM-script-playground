@@ -270,6 +270,8 @@ def main():
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
                         help=f"check only this specific AP name")
+    parser.add_argument('-a', '--accel', required=False, action='store_true',
+                        help=f"fetch accelerometer for each AP")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
     args = parser.parse_args()
@@ -444,8 +446,6 @@ def main():
                         pattern_AP_SLOT_DUAL_ROLE = re.compile(f_regex)
                         f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
                         pattern_AP_SLOT_ADMIN = re.compile(f_regex)
-                        #   Administrative State                          : Disabled
-
                         # find the line that matches this AP
                         match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
                         match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
@@ -505,8 +505,6 @@ def main():
                         pattern_AP_SLOT = re.compile(f_regex)
                         f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
                         pattern_AP_SLOT_ADMIN = re.compile(f_regex)
-                        #   Administrative State                          : Disabled
-
                         # find the line that matches this AP
                         match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
                         match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
@@ -592,6 +590,25 @@ def main():
                         command = f"ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown"
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli("enable ; " + command)
+
+    if args.accel:
+        # TODO concurrent
+        for online_ap in sorted_ONLINE_APs:
+            command = f"show ap name {args.name} accelerometer"
+            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching {command}")
+            cli_ap_accel_detail = cli(command)
+
+            # Tilt angle          : 3 Degree(s)
+            # Last update         : 08/15/2026 21:19:30
+
+            for slot_line in cli_ap_accel_detail.splitlines():
+                f_regex = rf"^Tilt angle\s+:\s+(.*)"
+                pattern_AP_TILT = re.compile(f_regex)
+                match_cli_ap_tilt = re.search(pattern_AP_TILT, slot_line)
+                if match_cli_ap_tilt:
+                    online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
+                send_ios_syslog(severity=l_DEBUG,
+                                               message=f"TILT ONLINE {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
