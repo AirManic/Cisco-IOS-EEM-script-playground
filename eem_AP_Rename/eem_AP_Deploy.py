@@ -109,6 +109,7 @@ import time
 import copy
 import random
 import string
+import concurrent.futures
 
 my_name = os.path.basename(sys.argv[0])
 
@@ -405,20 +406,12 @@ def main():
                     # reset this_ap_name to look for the next hit
                     this_ap_name = None
 
-    # TODO concurrent
-    for online_ap in sorted_ONLINE_APs:
-        get_ap_cdp(online_ap)
-
     def get_ap_serial(online_ap=None):
         if online_ap is None: return
         # TAMQFLHXC3W#show ap name TAMWAP422-349 inventory
         # NAME: CW9176, DESCR: Cisco Catalyst 9176 Series Access Point
         # PID: CW9176D1, VID: 01, SN: WTT294009HU
         #
-
-    # TODO concurrent
-    for online_ap in sorted_ONLINE_APs:
-        get_ap_serial(online_ap)
 
     def get_tilt(online_ap=None):
         if online_ap is None: return
@@ -435,11 +428,6 @@ def main():
                 online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
         send_ios_syslog(severity=l_DEBUG,
                         message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
-
-    # TODO concurrent
-    for online_ap in sorted_ONLINE_APs:
-        if not args.accel: break
-        get_tilt(online_ap)
 
     def do_ap_rename(online_ap=None):
         if online_ap is None: return
@@ -463,10 +451,6 @@ def main():
             command = command + f"ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']} ; "
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
             cli(command) ; command = ""
-
-    # TODO concurrent
-    for online_ap in sorted_ONLINE_APs:
-        do_ap_rename(online_ap)
 
     def do_dual_5ghz(online_ap=None):
         if online_ap is None: return
@@ -669,9 +653,18 @@ def main():
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ Sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli(command) ; command = ""
 
-    # TODO concurrent
-    for online_ap in sorted_ONLINE_APs:
+    def process_ap(online_ap):
+        get_ap_cdp(online_ap)
+        get_ap_serial(online_ap)
+        get_tilt(online_ap)
+        do_ap_rename(online_ap)
         do_dual_5ghz(online_ap)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(process_ap, sorted_ONLINE_APs)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
 
     if args.debug: send_ios_syslog(severity=l_INFO, message=f"ONLINE_APs length is {len(ONLINE_APs)}")
 
