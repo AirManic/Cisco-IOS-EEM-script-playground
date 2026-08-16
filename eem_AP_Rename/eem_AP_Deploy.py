@@ -410,7 +410,7 @@ def main():
             prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
 
             if hit_ap:
-                send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {online_ap}")
+                if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {prep_online_ap}")
                 # see if we already added this AP per a CDP hit, if not then added with CDP neighbor not known
                 match_ap = online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'], ap_list=[prep_online_ap])
                 if match_ap:
