@@ -507,7 +507,7 @@ def main():
                     hit_ap = None
                     this_ap_name = None
                     this_ap_slot = None
-                    this_ap_slot_dual_mode = None
+                    this_ap_slot_admin = None
                     for slot_line in cli_ap_config_slot.splitlines():
                         f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
                         pattern_AP_NAME = re.compile(f_regex)
