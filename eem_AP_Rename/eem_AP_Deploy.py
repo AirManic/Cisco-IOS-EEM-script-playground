@@ -178,16 +178,20 @@ def send_ios_syslog(message=None, severity=l_INFO):
         print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
 
 
-csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
-              'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
-              'AP_DUAL_5GHZ']  # Define fields to strip
 class AccessPoint(dict):
 
+    # Define fields to make sure exist
+    csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
+                  'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
+                  'AP_DUAL_5GHZ']
+
     def __init__(self, *args, **kwargs):
-        # Make sure these attributes exist
-        for field in csv_fields: self[field] = None
+        # Make sure these attributes exist first
+        for field in self.csv_fields: self[field] = None
+        # now load any fields passed in the instantiator call
         super().__init__(*args, **kwargs)
-        for field in csv_fields:
+        # make sure all fields are strip(), this esp helps when reading csv file headers and values
+        for field in self.csv_fields:
             if isinstance(self[field],str): self[field] = self[field].strip()
 
     def __setitem__(self, key, value):
