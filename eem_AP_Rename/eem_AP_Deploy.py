@@ -469,11 +469,17 @@ def main():
                         match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, slot_line)
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
+                            this_ap_slot = None
+                            this_ap_slot_dual_mode = None
+                            this_ap_slot_admin = None
                         # now process this block, but only for the AP looking for
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot:
                             this_ap_slot = match_cli_ap_slot.group(1)
+                            this_ap_slot_dual_mode = None
+                            this_ap_slot_admin = None
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_dual_role:
                             this_ap_slot_dual_mode = match_cli_ap_slot_dual_role.group(1).strip()
+                            this_ap_slot_admin = None
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
                         # once we have the details, break out of the for loop
@@ -523,9 +529,12 @@ def main():
                         match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, slot_line)
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
+                            this_ap_slot = None
+                            this_ap_slot_admin = None
                         # now process this block, but only for the AP looking for
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot:
                             this_ap_slot = match_cli_ap_slot.group(1)
+                            this_ap_slot_admin = None
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
                         # once we have the details, break out of the for loop
