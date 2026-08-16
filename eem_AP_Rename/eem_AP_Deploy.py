@@ -437,8 +437,7 @@ def main():
     for online_ap in sorted_ONLINE_APs:
         # don't run the loop if args not present
         if not args.accel: break
-        if 'AP_TILT' not in online_ap.keys():
-            online_ap['AP_TILT'] = None
+        online_ap['AP_TILT'] = None
         command = f"show ap name {online_ap['AP_NAME']} accelerometer"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
         cli_ap_accel_detail = cli(command) ; command = ""
@@ -448,10 +447,8 @@ def main():
             match_cli_ap_tilt = re.search(pattern_AP_TILT, slot_line)
             if match_cli_ap_tilt:
                 online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
-            else:
-                online_ap['AP_TILT'] = None
-            send_ios_syslog(severity=l_DEBUG,
-                            message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
+        send_ios_syslog(severity=l_DEBUG,
+                        message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
 
     # TODO concurrent
     for online_ap in sorted_ONLINE_APs:
