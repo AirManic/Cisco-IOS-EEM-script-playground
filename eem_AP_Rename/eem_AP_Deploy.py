@@ -536,7 +536,7 @@ def main():
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                            message=f"DUAL_5GHZ HIT dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                             # update online_ap
-                            online_ap['AP_DUAL_5GHZ'] = f"Slot 1 {this_ap_slot_dual_mode}"
+                            online_ap['AP_DUAL_5GHZ'] = f"Slot {this_ap_slot} {this_ap_slot_dual_mode}"
                             break
 
 
@@ -587,7 +587,7 @@ def main():
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
                             this_ap_slot = None
-                            online_ap['AP_DUAL_5GHZ'] = None
+                            this_ap_slot_admin = None
                         # now process this block, but only for the AP looking for
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot:
                             this_ap_slot = match_cli_ap_slot.group(1)
@@ -600,7 +600,7 @@ def main():
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                            message=f"DUAL_5GHZ Found dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
                             # update online_ap
-                            online_ap['AP_DUAL_5GHZ'] = f"{online_ap['AP_DUAL_5GHZ']} / Slot 2 {this_ap_slot_admin}"
+                            online_ap['AP_DUAL_5GHZ'] = f"{online_ap['AP_DUAL_5GHZ']} / Slot {this_ap_slot} {this_ap_slot_admin}"
                             break
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
@@ -658,7 +658,7 @@ def main():
                             break
 
                     # update online_ap
-                    online_ap['AP_DUAL_5GHZ'] = this_ap_slot_dual_mode
+                    online_ap['AP_DUAL_5GHZ'] = f"Slot {this_ap_slot} {this_ap_slot_band}"
 
                     if hit_ap and this_ap_slot_band != "5 GHz":
                         send_ios_syslog(severity=l_INFO,
