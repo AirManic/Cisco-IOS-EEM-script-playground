@@ -450,7 +450,7 @@ def main():
             match_cli_ap_tilt = re.search(pattern_AP_TILT, line)
             if match_cli_ap_tilt:
                 online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
-        send_ios_syslog(severity=l_DEBUG,
+        if args.accel: send_ios_syslog(severity=l_DEBUG,
                         message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
 
     def do_ap_rename(online_ap=None):
