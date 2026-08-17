@@ -259,7 +259,7 @@ def main():
                         default=f"{DEFAULT_OUTFILE}",
                         help=f"specify outfile csv to dump ONLINE_AP list, defaults to {DEFAULT_INFILE}")
     parser.add_argument('-l', '--list', required=False, action='store_true',
-                        help=f"list the ONLINE_AP in the outfile csv")
+                        help=f"list the ONLINE_AP in the outfile csv. Only works if -n not used or is ALL")
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
                         help=f"check only this specific AP name")
