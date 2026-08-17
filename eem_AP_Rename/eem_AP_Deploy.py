@@ -478,6 +478,8 @@ def main():
 
     def do_dual_5ghz(online_ap=None):
         if online_ap is None: return
+        if "AP_DUAL_5GHZ" not in online_ap.keys():
+            online_ap['AP_DUAL_5GHZ'] = None
         # First look for a full match of all the criteria that is present
         # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
         criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
@@ -533,10 +535,12 @@ def main():
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                            message=f"DUAL_5GHZ HIT dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
+                            # update online_ap
+                            online_ap['AP_DUAL_5GHZ'] = f"Slot 1 {this_ap_slot_dual_mode}"
                             break
+
+
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
-                        # update online_ap
-                        online_ap['AP_DUAL_5GHZ'] = this_ap_slot_dual_mode
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                         command = f"enable ; "
@@ -583,7 +587,7 @@ def main():
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
                             this_ap_slot = None
-                            this_ap_slot_admin = None
+                            online_ap['AP_DUAL_5GHZ'] = None
                         # now process this block, but only for the AP looking for
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot:
                             this_ap_slot = match_cli_ap_slot.group(1)
@@ -595,6 +599,8 @@ def main():
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                            message=f"DUAL_5GHZ Found dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_admin}")
+                            # update online_ap
+                            online_ap['AP_DUAL_5GHZ'] = f"{online_ap['AP_DUAL_5GHZ']} / Slot 2 {this_ap_slot_admin}"
                             break
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
@@ -650,9 +656,11 @@ def main():
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                            message=f"DUAL_5GHZ Found dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                             break
+
+                    # update online_ap
+                    online_ap['AP_DUAL_5GHZ'] = this_ap_slot_dual_mode
+
                     if hit_ap and this_ap_slot_band != "5 GHz":
-                        # update online_ap
-                        online_ap['AP_DUAL_5GHZ'] = this_ap_slot_band
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                         command = ""
