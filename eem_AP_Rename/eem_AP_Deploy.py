@@ -696,7 +696,8 @@ def main():
 
     if args.debug: send_ios_syslog(severity=l_INFO, message=f"ONLINE_APs length is {len(ONLINE_APs)}")
 
-    if args.outfile_csv:
+    # only dump if doing ALL AP-s
+    if args.name is None or args.name == "ALL":
         csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
                       'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
                       'AP_DUAL_5GHZ']
