@@ -184,7 +184,7 @@ class AccessPoint(dict):
 
     # Define fields to make sure exist
     csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
-                  'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
+                  'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT', 'AP_CDP_SWITCH_PORT_LOCAL',
                   'AP_DUAL_5GHZ']
 
     def __init__(self, *args, **kwargs):
@@ -274,9 +274,9 @@ def main():
                         default=None,
                         help=f"check only this specific AP name")
     parser.add_argument('-a', '--accel', required=False, action='store_true',
-                        help=f"fetch accelerometer for each AP")
-    parser.add_argument('-s', '--speed', required=False, action='store_true',
-                        help=f"fetch speed/duplex and check for each AP")
+                        help=f"print accelerometer for each AP")
+    parser.add_argument('-S', '--speed', required=False, action='store_true',
+                        help=f"print speed & duplex for each AP")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
     parser.add_argument('-X', '--Xchange', required=False, action='store_true',
@@ -386,16 +386,11 @@ def main():
             ONLINE_APs.append(online_ap)
 
     # Sort them for added sanity to process loops in a way most humans think
-    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: x['AP_NAME'])
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME']) )
 
-    def get_ap_cdp(online_ap=None):
+    def get_ap_cdp(online_ap:AccessPoint=None):
         if online_ap is None: return
-        if 'AP_CDP_SWITCH' not in online_ap.keys():
-            online_ap['AP_CDP_SWITCH'] = None
-        if 'AP_CDP_SWITCH_PORT' not in online_ap.keys():
-            online_ap['AP_CDP_SWITCH_PORT'] = None
-        if 'AP_CDP_SWITCH_PORT_LOCAL' not in online_ap.keys():
-            online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = None
+        online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT" , "AP_CDP_SWITCH_PORT_LOCAL"])
         # assume we have a longer summary, as this will work for short or long output then
         # as we are expecting some AP-s to be dual-enet, so need to find all matches
         f_regex = rf"^AP Name\s+:\s+(\S+)"
@@ -427,18 +422,22 @@ def main():
                 if match_cli_cdp_interface:
                     this_ap_cdp_switch_port = match_cli_cdp_interface.group(2)
                     this_ap_cdp_switch_port_local = match_cli_cdp_interface.group(1)
-            hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_cdp_switch and this_ap_cdp_switch_port and this_ap_cdp_switch_port_local
-
-            # create a new object for checking and potentially appending
-            prep_online_ap = copy.deepcopy(online_ap)
-            prep_online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-            prep_online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
-            prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+            hit_ap = (this_ap_name == online_ap['AP_NAME']
+                      and this_ap_cdp_switch and this_ap_cdp_switch_port
+                      and this_ap_cdp_switch_port_local)
 
             if hit_ap:
+
+                # create a new object for checking and potentially appending
+                prep_online_ap = copy.deepcopy(online_ap)
+                prep_online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
+                prep_online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
+                prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+
                 if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {prep_online_ap}")
                 # see if we already added this AP per a CDP hit, if not then added with CDP neighbor not known
-                match_ap = online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'], ap_list=[prep_online_ap])
+                match_ap = prep_online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
+                                                      ap_list=ONLINE_APs)
                 if match_ap:
                     match_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
                     match_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
@@ -466,27 +465,29 @@ def main():
             if match_cli_ap_serial:
                 online_ap['AP_SERIAL'] = match_cli_ap_serial.group(1)
         if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"SERIAL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_SERIAL']}")
+                                       message=f"SERIAL ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                               f"is {online_ap['AP_SERIAL']}")
 
-    def get_tilt(online_ap=None):
+    def get_accel(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist("AP_TILT")
+        online_ap.make_exist("AP_ACCEL")
         command = f"show ap name {online_ap['AP_NAME']} accelerometer"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
         cli_ap_accel_detail = cli(command)
         command = ""
         for line in cli_ap_accel_detail.splitlines():
-            f_regex = rf"^Tilt angle\s+:\s+(.*)"
-            pattern_AP_TILT = re.compile(f_regex)
-            match_cli_ap_tilt = re.search(pattern_AP_TILT, line)
-            if match_cli_ap_tilt:
-                online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
+            f_regex = rf"^Accel angle\s+:\s+(.*)"
+            pattern_AP_ACCEL = re.compile(f_regex)
+            match_cli_ap_accel = re.search(pattern_AP_ACCEL, line)
+            if match_cli_ap_accel:
+                online_ap['AP_ACCEL'] = match_cli_ap_accel.group(1).strip()
         if args.accel: send_ios_syslog(severity=l_DEBUG,
-                        message=f"TILT ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
+                        message=f"ACCEL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_ACCEL']}")
 
-    def get_speed_duplex(online_ap=None):
+    def get_speed_duplex(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT", "AP_CDP_SWITCH_PORT_LOCAL", "AP_SPEED_DUPLEX"])
+        online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT", "AP_CDP_SWITCH_PORT_LOCAL",
+                              "AP_CDP_SWITCH_PORT_SPEED", "AP_CDP_SWITCH_PORT_DUPLEX"])
 
         # AP Name : WAP039-115
         # GigabitEthernet0    UP       5000 Mbps   Full    187466978     45023229      0
@@ -496,63 +497,74 @@ def main():
         f_regex = rf"^AP Name\s+:\s+(\S+)"
         pattern_AP_NAME = re.compile(f_regex)
         f_regex = rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+Mbps\s+(\S+)"
-        pattern_INTERFACE = re.compile(f_regex)
+        f_regex = rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)"
+        pattern_AP_SPEED_DUPLEX= re.compile(f_regex)
 
         this_ap_name = None
-        this_ap_cdp_switch_port = None
         this_ap_cdp_switch_port_local = None
+        this_ap_cdp_switch_speed = None
+        this_ap_cdp_switch_duplex = None
         for line in cli_ap_ether_stats.splitlines():
             # find the line that matches this AP
-            match_cli_cdp_ap = re.search(pattern_AP_NAME, line)
-            if match_cli_cdp_ap:
-                this_ap_name = match_cli_cdp_ap.group(1)
-                this_ap_cdp_switch = None
-                this_ap_cdp_switch_port = None
+            match_cli_ap_name = re.search(pattern_AP_NAME, line)
+            if match_cli_ap_name:
+                this_ap_name = match_cli_ap_name.group(1)
                 this_ap_cdp_switch_port_local = None
+                this_ap_cdp_switch_speed = None
+                this_ap_cdp_switch_duplex = None
             # now process this block, but only for the AP looking for
             if this_ap_name == online_ap['AP_NAME']:
-                # Now continue to fetch the attached neighbor device basename
-                match_cli_cdp_deviceid = re.search(pattern_AP_DEVICEID, line)
-                if match_cli_cdp_deviceid:
-                    this_ap_cdp_switch = match_cli_cdp_deviceid.group(1).split(".")[0]
-                match_cli_cdp_interface = re.search(pattern_INTERFACE, line)
-                if match_cli_cdp_interface:
-                    this_ap_cdp_switch_port = match_cli_cdp_interface.group(2)
-                    this_ap_cdp_switch_port_local = match_cli_cdp_interface.group(1)
-            hit_ap = this_ap_name == online_ap[
-                'AP_NAME'] and this_ap_cdp_switch and this_ap_cdp_switch_port and this_ap_cdp_switch_port_local
+                # Now continue to fetch the attached speed/duplex
+                match_cli_ap_speed_duplex = re.search(pattern_AP_SPEED_DUPLEX, line)
+                if match_cli_ap_speed_duplex:
+                    this_ap_cdp_switch_port_local = match_cli_ap_speed_duplex.group(1)
+                    this_ap_cdp_switch_speed = match_cli_ap_speed_duplex.group(3)
+                    this_ap_cdp_switch_duplex = match_cli_ap_speed_duplex.group(5)
 
-            # create a new object for checking and potentially appending
-            prep_online_ap = copy.deepcopy(online_ap)
-            prep_online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-            prep_online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
-            prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+            hit_ap = (this_ap_name == online_ap['AP_NAME']
+                      and this_ap_cdp_switch_port_local
+                      and this_ap_cdp_switch_speed and this_ap_cdp_switch_duplex)
 
             if hit_ap:
-                if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {prep_online_ap}")
-                # see if we already added this AP per a CDP hit, if not then added with CDP neighbor not known
-                match_ap = online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
-                                                 ap_list=[prep_online_ap])
-                if match_ap:
-                    match_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-                    match_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
+
+                # create a new object for checking and potentially appending
+                prep_online_ap = copy.deepcopy(online_ap)
+                prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+                prep_online_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap_cdp_switch_speed
+                prep_online_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap_cdp_switch_duplex
+
+                if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"SPEED_DUPLEX detected {prep_online_ap}")
+                # see if we already added this AP, if not then add it
+                match_ap = prep_online_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
+                                                      ap_list=ONLINE_APs)
+
+                if  match_ap:
                     match_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
-                elif not online_ap['AP_CDP_SWITCH_PORT_LOCAL']:
-                    online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
-                    online_ap['AP_CDP_SWITCH_PORT'] = this_ap_cdp_switch_port
-                    online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+                    match_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap_cdp_switch_speed
+                    match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap_cdp_switch_duplex
+                elif online_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None:
+                     online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
+                     online_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap_cdp_switch_speed
+                     online_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap_cdp_switch_duplex
                 else:
                     ONLINE_APs.append(prep_online_ap)
                 # reset this_ap_name to look for the next hit
-                this_ap_name = None
 
-    def do_ap_rename(online_ap=None):
+        if args.speed: send_ios_syslog(severity=l_DEBUG,
+                                       message=f"SPEED_DUPLEX ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                               f"{online_ap['AP_CDP_SWITCH_PORT_LOCAL']} is "
+                                               f"{online_ap['AP_CDP_SWITCH_PORT_SPEED']} "
+                                               f"{online_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
+
+
+    def do_ap_rename(online_ap:AccessPoint=None):
         if online_ap is None: return
         # First look for a full match of all the criteria that is present
         # only look for AP-s that need to be renamed, so match does not include AP_NAME itself
         criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
         if args.debug:send_ios_syslog(severity=l_DEBUG,
-                                      message=f"MATCH_AP ONLINE {online_ap['AP_NAME']} in NEW_APs criteria {criteria} {online_ap}")
+                                      message=f"MATCH_AP ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                              f"in NEW_APs criteria {criteria} {online_ap}")
         match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
 
         do_rename_ap = None
@@ -569,22 +581,25 @@ def main():
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
             cli(command) ; command = ""
 
-    def do_dual_5ghz(online_ap=None):
+    def do_dual_5ghz(online_ap:AccessPoint=None):
         if online_ap is None: return
         online_ap.make_exist("AP_DUAL_5GHZ")
         # First look for a full match of all the criteria that is present
         # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
         criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
         if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                      message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} matching in NEW_APs criteria {criteria} {online_ap}")
+                                      message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']}"
+                                              f" matching in NEW_APs criteria {criteria} {online_ap}")
         match_ap = online_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
         if match_ap:
             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
+                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']}"
+                                                   f" HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
             if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1'] and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                 # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
                 if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                               message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {match_ap['AP_MODEL']} checking status")
+                                               message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {match_ap['AP_MODEL']}"
+                                                       f" checking status")
                 if match_ap['AP_MODEL'] == "CW9178I":
                     # assume we have a longer summary, as this will work for short or long output then
                     # Check Slot 1 first
@@ -623,10 +638,14 @@ def main():
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
                         # once we have the details, break out of the for loop
-                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_dual_mode and this_ap_slot_admin
+                        hit_ap = (this_ap_name == online_ap['AP_NAME']
+                                  and this_ap_slot and this_ap_slot_dual_mode
+                                  and this_ap_slot_admin)
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} Slot {this_ap_slot} HIT as mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
+                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} "
+                                                                   f"{online_ap['AP_MODEL']} Slot {this_ap_slot} "
+                                                                   f"HIT as mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
                             # update online_ap
                             online_ap['AP_DUAL_5GHZ'] = f"Slot {this_ap_slot} mode {this_ap_slot_dual_mode}"
                             break
@@ -634,7 +653,9 @@ def main():
 
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} Slot {this_ap_slot} changing to dual_mode for mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
+                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                f"Slot {this_ap_slot} "
+                                                f"changing to dual_mode for mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
                         command = f"enable ; "
                         if args.Xchange: command = command + f"! Xchange crippled "
                         command = f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ; "
@@ -651,7 +672,9 @@ def main():
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} Slot {this_ap_slot} changing to dual-5GHz to Admin Enable as dual_mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
+                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                f"Slot {this_ap_slot} "
+                                                f"changing to dual-5GHz to Admin Enable as dual_mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
                         if args.Xchange: command = command + f"! Xchange crippled "
                         command = f"enable ; "
                         if args.Xchange: command = command + f"! Xchange crippled "
@@ -687,17 +710,21 @@ def main():
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
                         # once we have the details, break out of the for loop
-                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_admin
+                        hit_ap = (this_ap_name == online_ap['AP_NAME']
+                                  and this_ap_slot and this_ap_slot_admin)
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} Slot {this_ap_slot} HIT admin {this_ap_slot_admin}")
+                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                                   f"Slot {this_ap_slot} HIT admin {this_ap_slot_admin}")
                             # update online_ap
                             online_ap['AP_DUAL_5GHZ'] = f"{online_ap['AP_DUAL_5GHZ']} / Slot {this_ap_slot} admin {this_ap_slot_admin}"
                             break
 
                     if hit_ap and this_ap_slot_admin != "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} Slot {this_ap_slot} changing to dual-5GHz to Admin Enable as admin {this_ap_slot_admin}")
+                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} "
+                                                f"Slot {this_ap_slot} "
+                                                f"changing to dual-5GHz to Admin Enable as admin {this_ap_slot_admin}")
                         command = ""
                         if args.Xchange: command = command + f"! Xchange crippled "
                         command = command + f"enable ; "
@@ -743,10 +770,13 @@ def main():
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_band:
                             this_ap_slot_band = match_cli_ap_slot_band.group(1).strip()
                         # once we have the details, break out of the for loop
-                        hit_ap = this_ap_name == online_ap['AP_NAME'] and this_ap_slot and this_ap_slot_role and this_ap_slot_method and this_ap_slot_band
+                        hit_ap = (this_ap_name == online_ap['AP_NAME']
+                                  and this_ap_slot and this_ap_slot_role and this_ap_slot_method and this_ap_slot_band)
                         if hit_ap:
                             if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} Slot {this_ap_slot} has role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
+                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                                   f"Slot {this_ap_slot} "
+                                                                   f"has role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
                             break
 
                     # update online_ap
@@ -754,7 +784,9 @@ def main():
 
                     if hit_ap and this_ap_slot_band != "5 GHz":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} Slot {this_ap_slot} changing to enable dual-5GHz for role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
+                                        message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                f"Slot {this_ap_slot} "
+                                                f"changing to enable dual-5GHz for role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
                         command = ""
                         if args.Xchange: command = command + f"! Xchange crippled "
                         command = command + f"enable ; "
@@ -781,11 +813,11 @@ def main():
                         send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
                         cli(command) ; command = ""
 
-    def process_ap(online_ap):
+    def process_ap(online_ap:AccessPoint=None):
         get_ap_cdp(online_ap)
         get_ap_serial(online_ap)
-        get_tilt(online_ap)
-        # get_speed_duplex(online_ap)
+        get_accel(online_ap)
+        get_speed_duplex(online_ap)
         do_ap_rename(online_ap)
         do_dual_5ghz(online_ap)
 
@@ -802,6 +834,9 @@ def main():
         csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
                       'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
                       'AP_DUAL_5GHZ']
+
+        # sort again, allowing for repeated AP_NAME for AP_CDP_SWITCH_PORT_LOCAL
+        sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
 
         # using a dict to build fieldnames so will be in order inserted, aka csv_fields first followed by other keys used
         fieldnames = dict.fromkeys(csv_fields)
