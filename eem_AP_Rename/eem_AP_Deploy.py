@@ -367,9 +367,9 @@ def main():
             this_ap_cdp_switch = None
             this_ap_cdp_switch_port = None
             this_ap_cdp_switch_port_local = None
-            for cdp_line in cli_ap_cdp_detail.splitlines():
+            for line in cli_ap_cdp_detail.splitlines():
                 # find the line that matches this AP
-                match_cli_cdp_ap = re.search(pattern_AP_NAME, cdp_line)
+                match_cli_cdp_ap = re.search(pattern_AP_NAME, line)
                 if match_cli_cdp_ap:
                     this_ap_name = match_cli_cdp_ap.group(1)
                     this_ap_cdp_switch = None
@@ -378,10 +378,10 @@ def main():
                 # now process this block, but only for the AP looking for
                 if this_ap_name == online_ap['AP_NAME']:
                     # Now continue to fetch the attached neighbor device basename
-                    match_cli_cdp_deviceid = re.search(pattern_AP_DEVICEID, cdp_line)
+                    match_cli_cdp_deviceid = re.search(pattern_AP_DEVICEID, line)
                     if match_cli_cdp_deviceid:
                         this_ap_cdp_switch = match_cli_cdp_deviceid.group(1).split(".")[0]
-                    match_cli_cdp_interface = re.search(pattern_INTERFACE, cdp_line)
+                    match_cli_cdp_interface = re.search(pattern_INTERFACE, line)
                     if match_cli_cdp_interface:
                         this_ap_cdp_switch_port = match_cli_cdp_interface.group(2)
                         this_ap_cdp_switch_port_local = match_cli_cdp_interface.group(1)
@@ -416,18 +416,35 @@ def main():
         # NAME: CW9176, DESCR: Cisco Catalyst 9176 Series Access Point
         # PID: CW9176D1, VID: 01, SN: WTT294009HU
         #
+        if online_ap is None: return
+        if "AP_SERIAL" not in online_ap.keys():
+            online_ap['AP_SERIAL'] = None
+        online_ap['AP_SERIAL'] = None
+        command = f"show ap name {online_ap['AP_NAME']} inventory"
+        if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
+        cli_ap_serial_detail = cli(command)
+        command = ""
+        for line in cli_ap_serial_detail.splitlines():
+            f_regex = rf"^PID:.*SN:\s+(\S+)"
+            pattern_AP_SERIAL = re.compile(f_regex)
+            match_cli_ap_serial = re.search(pattern_AP_SERIAL, line)
+            if match_cli_ap_serial:
+                online_ap['AP_SERIAL'] = match_cli_ap_serial.group(1)
+        send_ios_syslog(severity=l_DEBUG,
+                        message=f"SERIAL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_SERIAL']}")
 
     def get_tilt(online_ap=None):
         if online_ap is None: return
-        online_ap['AP_TILT'] = None
+        if "AP_TILT" not in online_ap.keys():
+            online_ap['AP_TILT'] = None
         command = f"show ap name {online_ap['AP_NAME']} accelerometer"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
-        cli_ap_accel_detail = cli(command);
+        cli_ap_accel_detail = cli(command)
         command = ""
-        for slot_line in cli_ap_accel_detail.splitlines():
+        for line in cli_ap_accel_detail.splitlines():
             f_regex = rf"^Tilt angle\s+:\s+(.*)"
             pattern_AP_TILT = re.compile(f_regex)
-            match_cli_ap_tilt = re.search(pattern_AP_TILT, slot_line)
+            match_cli_ap_tilt = re.search(pattern_AP_TILT, line)
             if match_cli_ap_tilt:
                 online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
         send_ios_syslog(severity=l_DEBUG,
@@ -479,7 +496,7 @@ def main():
                     this_ap_slot = None
                     this_ap_slot_dual_mode = None
                     this_ap_slot_admin = None
-                    for slot_line in cli_ap_config_slot.splitlines():
+                    for line in cli_ap_config_slot.splitlines():
                         f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
                         pattern_AP_NAME = re.compile(f_regex)
                         f_regex = rf"^Attributes for Slot (1)"
@@ -489,10 +506,10 @@ def main():
                         f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
                         pattern_AP_SLOT_ADMIN = re.compile(f_regex)
                         # find the line that matches this AP
-                        match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
-                        match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
-                        match_cli_ap_slot_dual_role = re.search(pattern_AP_SLOT_DUAL_ROLE, slot_line)
-                        match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, slot_line)
+                        match_cli_ap_name = re.search(pattern_AP_NAME, line)
+                        match_cli_ap_slot = re.search(pattern_AP_SLOT, line)
+                        match_cli_ap_slot_dual_role = re.search(pattern_AP_SLOT_DUAL_ROLE, line)
+                        match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, line)
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
                             this_ap_slot = None
@@ -547,7 +564,7 @@ def main():
                     this_ap_name = None
                     this_ap_slot = None
                     this_ap_slot_admin = None
-                    for slot_line in cli_ap_config_slot.splitlines():
+                    for line in cli_ap_config_slot.splitlines():
                         f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
                         pattern_AP_NAME = re.compile(f_regex)
                         f_regex = rf"^Attributes for Slot (2)"
@@ -555,9 +572,9 @@ def main():
                         f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
                         pattern_AP_SLOT_ADMIN = re.compile(f_regex)
                         # find the line that matches this AP
-                        match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
-                        match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
-                        match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, slot_line)
+                        match_cli_ap_name = re.search(pattern_AP_NAME, line)
+                        match_cli_ap_slot = re.search(pattern_AP_SLOT, line)
+                        match_cli_ap_slot_admin = re.search(pattern_AP_SLOT_ADMIN, line)
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
                             this_ap_slot = None
@@ -594,7 +611,7 @@ def main():
                     this_ap_slot_role = None
                     this_ap_slot_method = None
                     this_ap_slot_band = None
-                    for slot_line in cli_ap_config_slot.splitlines():
+                    for line in cli_ap_config_slot.splitlines():
                         f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
                         pattern_AP_NAME = re.compile(f_regex)
                         f_regex = rf"^Attributes for Slot (0)"
@@ -606,11 +623,11 @@ def main():
                         f_regex = rf"^\s+Band\s+:\s+(\S+\s+GHz)"
                         pattern_AP_SLOT_BAND = re.compile(f_regex)
                         # find the line that matches this AP
-                        match_cli_ap_name = re.search(pattern_AP_NAME, slot_line)
-                        match_cli_ap_slot = re.search(pattern_AP_SLOT, slot_line)
-                        match_cli_ap_slot_role = re.search(pattern_AP_SLOT_ROLE, slot_line)
-                        match_cli_ap_slot_method = re.search(pattern_AP_SLOT_METHOD, slot_line)
-                        match_cli_ap_slot_band = re.search(pattern_AP_SLOT_BAND, slot_line)
+                        match_cli_ap_name = re.search(pattern_AP_NAME, line)
+                        match_cli_ap_slot = re.search(pattern_AP_SLOT, line)
+                        match_cli_ap_slot_role = re.search(pattern_AP_SLOT_ROLE, line)
+                        match_cli_ap_slot_method = re.search(pattern_AP_SLOT_METHOD, line)
+                        match_cli_ap_slot_band = re.search(pattern_AP_SLOT_BAND, line)
                         if match_cli_ap_name:
                             this_ap_name = match_cli_ap_name.group(1)
                         # now process this block, but only for the AP looking for
