@@ -116,7 +116,8 @@ my_name = os.path.basename(sys.argv[0])
 # determine if running under IOS-XE guestshell
 is_guestshell = os.uname().nodename == 'guestshell'
 
-DEFAULT_INFILE = "/flash/guest-share/" + Path(my_name).stem + '.csv'
+DEFAULT_INFILE  = "/flash/guest-share/" + Path(my_name).stem + '.csv'
+DEFAULT_OUTFILE = "/flash/guest-share/" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
@@ -134,7 +135,8 @@ else:
         return ''
     def executep(command: str):
         return ''
-    DEFAULT_INFILE = "./experimental/exp_" + Path(my_name).stem + '.csv'
+    DEFAULT_INFILE  = "./experimental/exp_" + Path(my_name).stem + '.csv'
+    DEFAULT_OUTFILE = "./experimental/exp_" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
     SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
     SIM_FILE_EEM_AP_CDP = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
     SIM_FILE_EEM_AP_ETHER_STATS = f"./experimental/exp_eem_AP_ethernet_stats.txt"
@@ -253,7 +255,9 @@ def main():
     parser.add_argument('-i', '--infile_csv', type=str, required=False,
                         default=f"{DEFAULT_INFILE}",
                         help=f"specify infile csv, defaults to {DEFAULT_INFILE}")
-    parser.add_argument('-j', '--junk', type=str, required=False)
+    parser.add_argument('-o', '--outfile_csv', type=str, required=False,
+                        default=f"{DEFAULT_OUTFILE}",
+                        help=f"specify outfile csv to dump ONLINE_AP list, defaults to {DEFAULT_INFILE}")
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
                         help=f"check only this specific AP name")
@@ -683,6 +687,26 @@ def main():
         results = list(iterator)
 
     if args.debug: send_ios_syslog(severity=l_INFO, message=f"ONLINE_APs length is {len(ONLINE_APs)}")
+
+    if args.outfile_csv:
+        csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
+                      'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
+                      'AP_DUAL_5GHZ']
+
+        # using a dict to build fieldnames so will be in order inserted, aka csv_fields first followed by other keys used
+        fieldnames = dict.fromkeys(csv_fields)
+        for item in sorted_ONLINE_APs:
+            for key in item.keys():
+                fieldnames[key] = None
+
+        with open(DEFAULT_OUTFILE, 'w', newline='') as f:
+            writer = csv.writer(f)
+            # restval handles missing keys by filling them with an empty string
+            writer = csv.DictWriter(f, fieldnames=fieldnames, restval="")
+            # Write the column headers row
+            writer.writeheader()
+            # Write all rows at once
+            writer.writerows(sorted_ONLINE_APs)
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
