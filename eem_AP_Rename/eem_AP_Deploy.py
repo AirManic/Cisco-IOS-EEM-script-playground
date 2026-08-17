@@ -430,8 +430,8 @@ def main():
             match_cli_ap_serial = re.search(pattern_AP_SERIAL, line)
             if match_cli_ap_serial:
                 online_ap['AP_SERIAL'] = match_cli_ap_serial.group(1)
-        send_ios_syslog(severity=l_DEBUG,
-                        message=f"SERIAL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_SERIAL']}")
+        if args.debug: send_ios_syslog(severity=l_DEBUG,
+                                       message=f"SERIAL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_SERIAL']}")
 
     def get_tilt(online_ap=None):
         if online_ap is None: return
