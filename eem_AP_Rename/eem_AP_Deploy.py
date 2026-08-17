@@ -535,6 +535,8 @@ def main():
                                                            message=f"DUAL_5GHZ HIT dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                             break
                     if hit_ap and this_ap_slot_dual_mode != "Enabled":
+                        # update online_ap
+                        online_ap['AP_DUAL_5GHZ'] = this_ap_slot_dual_mode
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_dual_mode} / {this_ap_slot_admin}")
                         command = f"enable ; "
@@ -649,6 +651,8 @@ def main():
                                                            message=f"DUAL_5GHZ Found dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                             break
                     if hit_ap and this_ap_slot_band != "5 GHz":
+                        # update online_ap
+                        online_ap['AP_DUAL_5GHZ'] = this_ap_slot_band
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ Changing to dual-5GHz ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} as {this_ap_slot} / {this_ap_slot_role} / {this_ap_slot_method} / {this_ap_slot_band}")
                         command = ""
