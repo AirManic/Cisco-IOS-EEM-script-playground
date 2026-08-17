@@ -258,6 +258,8 @@ def main():
     parser.add_argument('-o', '--outfile_csv', type=str, required=False,
                         default=f"{DEFAULT_OUTFILE}",
                         help=f"specify outfile csv to dump ONLINE_AP list, defaults to {DEFAULT_INFILE}")
+    parser.add_argument('-l', '--list', required=False, action='store_true',
+                        help=f"list the ONLINE_AP in the outfile csv")
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
                         help=f"check only this specific AP name")
@@ -705,7 +707,7 @@ def main():
     if args.debug: send_ios_syslog(severity=l_INFO, message=f"ONLINE_APs length is {len(ONLINE_APs)}")
 
     # only dump if doing ALL AP-s
-    if args.name is None or args.name == "ALL":
+    if args.list and (args.name is None or args.name == "ALL"):
         csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
                       'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
                       'AP_DUAL_5GHZ']
