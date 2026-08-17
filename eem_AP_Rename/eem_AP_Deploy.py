@@ -237,10 +237,8 @@ class AccessPoint(dict):
             if not match_ap or miss_match_ap:
                 # no need to check any further, break loop
                 break
-
         # if had at least one item to match on.. and if all the items called out did match
         got_a_solid_match = is_ap_criteria and match_ap and not miss_match_ap
-        # TODO concurrent
         if got_a_solid_match:
             ap_return = ap
 
@@ -248,7 +246,6 @@ class AccessPoint(dict):
 
     def matching_ap(self, criteria=None, ap_list=None):
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
-        # TODO concurrent
         match_ap = next( (ap for ap in ap_list if
                          self.match_ap_criteria(criteria=criteria, ap=ap) ), None )
         return match_ap
