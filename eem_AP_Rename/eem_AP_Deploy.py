@@ -412,11 +412,6 @@ def main():
 
     def get_ap_serial(online_ap=None):
         if online_ap is None: return
-        # TAMQFLHXC3W#show ap name TAMWAP422-349 inventory
-        # NAME: CW9176, DESCR: Cisco Catalyst 9176 Series Access Point
-        # PID: CW9176D1, VID: 01, SN: WTT294009HU
-        #
-        if online_ap is None: return
         if "AP_SERIAL" not in online_ap.keys():
             online_ap['AP_SERIAL'] = None
         online_ap['AP_SERIAL'] = None
