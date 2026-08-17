@@ -340,11 +340,15 @@ def main():
     # build list of online AP from show ap summary
     for line in cli_ap_summary.splitlines():
         online_ap = AccessPoint()
-        f_regex = rf"^(\S+)\s+(\S+)\s+(\S+)\s+.*(Registered)"
+        # TAMWAP057-132                    4     CW9178I              780f.8167.bdf0 1057.2525.d5c0 US   -B   192.168.1.216                             Registered   default location
+        f_regex = rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)"
         match_cli_ap_summ = re.search(f_regex, line)
         if match_cli_ap_summ:
             online_ap['AP_NAME'] = match_cli_ap_summ.group(1)
             online_ap['AP_MODEL'] = match_cli_ap_summ.group(3)
+            online_ap['AP_MAC_ENET'] = match_cli_ap_summ.group(4)
+            online_ap['AP_MAC_RADIO'] = match_cli_ap_summ.group(5)
+            online_ap['AP_LOCATION'] = match_cli_ap_summ.group(10)
             ONLINE_APs.append(online_ap)
 
     # Sort them for added sanity to process loops in a way most humans think
@@ -699,7 +703,7 @@ def main():
             for key in item.keys():
                 fieldnames[key] = None
 
-        with open(DEFAULT_OUTFILE, 'w', newline='') as f:
+        with open(args.outfile_csv, 'w', newline='') as f:
             writer = csv.writer(f)
             # restval handles missing keys by filling them with an empty string
             writer = csv.DictWriter(f, fieldnames=fieldnames, restval="")
@@ -707,6 +711,8 @@ def main():
             writer.writeheader()
             # Write all rows at once
             writer.writerows(sorted_ONLINE_APs)
+        send_ios_syslog(severity=l_INFO, message=f"ONLINE_AP of {len(ONLINE_APs)} items is written to {args.outfile_csv}")
+
 
 if __name__ == "__main__":
     send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
