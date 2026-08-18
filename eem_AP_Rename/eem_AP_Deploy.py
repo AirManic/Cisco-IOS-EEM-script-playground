@@ -181,23 +181,6 @@ def send_ios_syslog(message=None, severity=l_INFO):
     except FileNotFoundError:
         print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
 
-
-def change_ap(command=None):
-    command_loop = [f"enable"]
-    if type(command) is str:
-        command_loop.append(command)
-    elif type(command) is list:
-        command_loop = command_loop + command
-    cripple = ""
-    if args.Xchange: cripple = f"! Xchange crippled "
-    command_seq = []
-    for cmd in command_loop:
-        command_seq.append(f"{cripple}{cmd}")
-    send_ios_syslog(severity=l_INFO, message=f"sending cli({command_seq})")
-    results = cli(command)
-    return results
-
-
 def show_ap(command=None):
     command_loop = []
     if type(command) is str:
@@ -208,6 +191,21 @@ def show_ap(command=None):
     for cmd in command_loop:
         command_seq.append(f"{cmd}")
     if args.debug: send_ios_syslog(severity=l_INFO, message=f"fetching cli([{command}])")
+    results = cli(command)
+    return results
+
+def change_ap(command=None):
+    command_loop = [f"enable"]
+    if type(command) is str:
+        command_loop.append(f"{command}")
+    elif type(command) is list:
+        command_loop = command_loop + command
+    cripple = ""
+    if args.Xchange: cripple = f"! Xchange crippled "
+    command_seq = ""
+    for cmd in command_loop:
+        command_seq = command_seq + (f"{cripple}{cmd} ; ")
+    send_ios_syslog(severity=l_INFO, message=f"sending cli('{command_seq}')")
     results = cli(command)
     return results
 
@@ -652,10 +650,7 @@ def main():
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual-5GHz to Admin Enable as dual_mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
-                        command = [
-                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown",
-                        ]
-                        change_ap(command=command)
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown")
 
                     # assume we have a longer summary, as this will work for short or long output then
                     # Now check Slot 2
@@ -698,10 +693,7 @@ def main():
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual-5GHz to Admin Enable as admin {this_ap_slot_admin}")
-                        command = [
-                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown"
-                        ]
-                        change_ap(command=command)
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown")
 
                 elif match_ap['AP_MODEL'] == "CW9176D1":
                     # assume we have a longer summary, as this will work for short or long output then
@@ -753,13 +745,10 @@ def main():
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to enable dual-5GHz for role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
-                        command = [
-                            f"ap name {online_ap['AP_NAME']} dot11 dual-band shutdown",
-                            f"ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving",
-                            f"ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz",
-                            f"ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown",
-                        ]
-                        change_ap(command=command)
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} dot11 dual-band shutdown")
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz")
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown")
 
     def process_ap(online_ap:AccessPoint=None):
         get_ap_cdp(online_ap)
