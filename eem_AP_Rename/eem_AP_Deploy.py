@@ -103,6 +103,7 @@ import argparse
 import os
 from pathlib import Path
 import sys
+import inspect
 import re
 import csv
 import time
@@ -155,8 +156,9 @@ global run_string
 run_string = ''.join(random.choices(string.digits, k=5))
 def send_ios_syslog(message=None, severity=l_INFO):
     try:
+
         for line in message.splitlines():
-            log_string = f"{my_name} RandRunID {run_string} {line}"
+            log_string = f"{my_name} RandRunID {run_string} {inspect.stack()[1][3]}() line {inspect.stack()[1][2]} {line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
                 log_string = f"[a123b234,1,{severity}]{log_string}\n"
@@ -350,7 +352,7 @@ def main():
         if args.name is not None and args.name != "ALL":
             cli_ap_summary = show_ap(command=f"show ap summary | inc {args.name}")
             # TODO fix sleep
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sleeping 210 sec on {args.name} to wait for CDP information" )
+            send_ios_syslog(severity=l_INFO, message=f"Sleeping 210 sec on {args.name} to wait for CDP information" )
             time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
             cli_ap_cdp_detail = show_ap(command=f"show ap name {args.name} cdp neighbor detail")
             cli_ap_ether_stats = show_ap(command=f"show ap name {args.name} ethernet statistics")
