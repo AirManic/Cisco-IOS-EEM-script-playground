@@ -180,6 +180,44 @@ def send_ios_syslog(message=None, severity=l_INFO):
         print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside Guestshell.")
 
 
+def change_ap(command=None):
+    command_loop = [f"enable"]
+    if type(command) is str:
+        command_loop.append(command)
+    elif type(command) is list:
+        command_loop = command_loop + command
+    cripple = ""
+    if args.Xchange: cripple = f"! Xchange crippled "
+    command_seq = []
+    for cmd in command_loop:
+        command_seq.append(f"{cripple}{cmd}")
+    send_ios_syslog(severity=l_INFO, message=f"sending cli({command_seq})")
+    results = cli(command)
+    return results
+
+
+def show_ap(command=None):
+    command_loop = []
+    if type(command) is str:
+        command_loop.append(command)
+    elif type(command) is list:
+        command_loop = command_loop + command
+    command_seq = []
+    for cmd in command_loop:
+        command_seq.append(f"{cmd}")
+    send_ios_syslog(severity=l_INFO, message=f"fetching cli([{command}])")
+    results = cli(command)
+    return results
+
+def fetch_file(file=None):
+    results = ""
+    if Path(file).is_file():
+        with open(file) as f:
+            results = f.read()
+    else:
+        print(f"{file} not found.")
+    return results
+
 class AccessPoint(dict):
 
     # Define fields to make sure exist
@@ -235,7 +273,7 @@ class AccessPoint(dict):
                                           or ( ap[aspect]
                                                and re.fullmatch(rf"{ap[aspect]}", self[aspect]) is not None ) )
             if not match_ap or miss_match_ap:
-                # no need to check any further, break loop
+                # no need to keep looking, so break the loop checking more aspect
                 break
         # if had at least one item to match on.. and if all the items called out did match
         got_a_solid_match = is_ap_criteria and match_ap and not miss_match_ap
@@ -290,7 +328,6 @@ def main():
             header_line = csvfile.readline()
             raw_headers = next(csv.reader([header_line]))
             cleaned_headers = [h.strip() for h in raw_headers]
-
             for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
                 NEW_APs.append(AccessPoint(ap))
     else:
@@ -311,69 +348,34 @@ def main():
     if is_guestshell:
         # Retrieve the AP list from the WLC
         if args.name is not None and args.name != "ALL":
-            command = f"show ap summary | inc {args.name}"
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_summary = cli(command) ; command = ""
+            cli_ap_summary = show_ap(command=f"show ap summary | inc {args.name}")
             # TODO fix sleep
             if args.debug: send_ios_syslog(severity=l_INFO, message=f"Sleeping 210 sec on {args.name} to wait for CDP information" )
             time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
-            command = f"show ap name {args.name} cdp neighbor detail"
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_cdp_detail = cli(command) ; command = ""
-            command = f"show ap name {args.name} ethernet statistics"
-            if args.debug:send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_ether_stats = cli(command) ; command = ""
+            cli_ap_cdp_detail = show_ap(command=f"show ap name {args.name} cdp neighbor detail")
+            cli_ap_ether_stats = show_ap(command=f"show ap name {args.name} ethernet statistics")
             # for a single AP, have to loop thru the potential slots
             cli_ap_config_slot = ""
             for i in range(0, 4):
-                command = f"show ap name {args.name} config slot {i}"
-                if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-                cli_ap_config_slot = cli_ap_config_slot + cli(command) ; command =""
+                cli_ap_config_slot = cli_ap_config_slot + show_ap(command=f"show ap name {args.name} config slot {i}")
         else:
-            command = f"show ap summary"
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_summary = cli(command) ; command = ""
-            command = f"show ap cdp neighbor detail"
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_cdp_detail = cli(command) ; command = ""
-            command = f"show ap ethernet statistics"
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_ether_stats = cli(command) ; command = ""
-            command = f"show ap config slot"
-            if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])" )
-            cli_ap_config_slot = cli(command) ; command = ""
+            cli_ap_summary = show_ap(command=f"show ap summary")
+            cli_ap_cdp_detail = show_ap(command=f"show ap cdp neighbor detail")
+            cli_ap_ether_stats = show_ap(command=f"show ap ethernet statistics")
+            cli_ap_config_slot = show_ap(command=f"show ap config slot")
     else:
-        if Path(SIM_FILE_EEM_AP_SUMM).is_file():
-            with open(SIM_FILE_EEM_AP_SUMM) as file:
-                cli_ap_summary = file.read()
-        else:
-            print(f"{SIM_FILE_EEM_AP_SUMM} not found.")
-
-        if Path(SIM_FILE_EEM_AP_CDP_DETAIL).is_file():
-            with open(SIM_FILE_EEM_AP_CDP_DETAIL) as file:
-                cli_ap_cdp_detail = file.read()
-        else:
-            print(f"{SIM_FILE_EEM_AP_CDP_DETAIL} not found.")
-
-        if Path(SIM_FILE_EEM_AP_ETHER_STATS).is_file():
-            with open(SIM_FILE_EEM_AP_ETHER_STATS) as file:
-                cli_ap_ether_stats = file.read()
-        else:
-            print(f"{SIM_FILE_EEM_AP_ETHER_STATS} not found.")
-
-        if Path(SIM_FILE_EEM_AP_CONFIG_SLOT).is_file():
-            with open(SIM_FILE_EEM_AP_CONFIG_SLOT) as file:
-                cli_ap_config_slot = file.read()
-        else:
-            print(f"{SIM_FILE_EEM_AP_CONFIG_SLOT} not found.")
+        cli_ap_summary = fetch_file(file=SIM_FILE_EEM_AP_SUMM)
+        cli_ap_cdp_detail = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
+        cli_ap_ether_stats = fetch_file(file=SIM_FILE_EEM_AP_ETHER_STATS)
+        cli_ap_config_slot = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
 
     ONLINE_APs = []
 
     # build list of online AP from show ap summary
     for line in cli_ap_summary.splitlines():
         online_ap = AccessPoint()
-        f_regex = rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)"
-        match_cli_ap_summ = re.search(f_regex, line)
+        pattern_AP_SUMMARY = re.compile(rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)")
+        match_cli_ap_summ = re.search(pattern_AP_SUMMARY, line)
         if match_cli_ap_summ:
             online_ap['AP_NAME'] = match_cli_ap_summ.group(1)
             online_ap['AP_MODEL'] = match_cli_ap_summ.group(3)
@@ -390,12 +392,9 @@ def main():
         online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT" , "AP_CDP_SWITCH_PORT_LOCAL"])
         # assume we have a longer summary, as this will work for short or long output then
         # as we are expecting some AP-s to be dual-enet, so need to find all matches
-        f_regex = rf"^AP Name\s+:\s+(\S+)"
-        pattern_AP_NAME = re.compile(f_regex)
-        f_regex = rf"^Device ID\s+:\s+(\S+)\."
-        pattern_AP_DEVICEID = re.compile(f_regex)
-        f_regex = rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)"
-        pattern_INTERFACE = re.compile(f_regex)
+        pattern_AP_NAME =       re.compile(rf"^AP Name\s+:\s+(\S+)")
+        pattern_AP_DEVICEID =   re.compile(rf"^Device ID\s+:\s+(\S+)\.")
+        pattern_INTERFACE =     re.compile(rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)")
 
         this_ap_name = None
         this_ap_cdp_switch = None
@@ -424,7 +423,6 @@ def main():
                       and this_ap_cdp_switch_port_local)
 
             if hit_ap:
-
                 # create a new object for checking and potentially appending
                 prep_online_ap = copy.deepcopy(online_ap)
                 prep_online_ap['AP_CDP_SWITCH'] = this_ap_cdp_switch
@@ -456,8 +454,7 @@ def main():
         cli_ap_serial_detail = cli(command)
         command = ""
         for line in cli_ap_serial_detail.splitlines():
-            f_regex = rf"^PID:.*SN:\s+(\S+)"
-            pattern_AP_SERIAL = re.compile(f_regex)
+            pattern_AP_SERIAL = re.compile(rf"^PID:.*SN:\s+(\S+)")
             match_cli_ap_serial = re.search(pattern_AP_SERIAL, line)
             if match_cli_ap_serial:
                 online_ap['AP_SERIAL'] = match_cli_ap_serial.group(1)
@@ -473,8 +470,7 @@ def main():
         cli_ap_accel_detail = cli(command)
         command = ""
         for line in cli_ap_accel_detail.splitlines():
-            f_regex = rf"^Accel angle\s+:\s+(.*)"
-            pattern_AP_ACCEL = re.compile(f_regex)
+            pattern_AP_ACCEL = re.compile(rf"^Accel angle\s+:\s+(.*)")
             match_cli_ap_accel = re.search(pattern_AP_ACCEL, line)
             if match_cli_ap_accel:
                 online_ap['AP_ACCEL'] = match_cli_ap_accel.group(1).strip()
@@ -485,17 +481,10 @@ def main():
         if online_ap is None: return
         online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT", "AP_CDP_SWITCH_PORT_LOCAL",
                               "AP_CDP_SWITCH_PORT_SPEED", "AP_CDP_SWITCH_PORT_DUPLEX"])
-
-        # AP Name : WAP039-115
-        # GigabitEthernet0    UP       5000 Mbps   Full    187466978     45023229      0
-
         # assume we have a longer summary, as this will work for short or long output then
         # as we are expecting some AP-s to be dual-enet, so need to find all matches
-        f_regex = rf"^AP Name\s+:\s+(\S+)"
-        pattern_AP_NAME = re.compile(f_regex)
-        f_regex = rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+Mbps\s+(\S+)"
-        f_regex = rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)"
-        pattern_AP_SPEED_DUPLEX= re.compile(f_regex)
+        pattern_AP_NAME =           re.compile(rf"^AP Name\s+:\s+(\S+)")
+        pattern_AP_SPEED_DUPLEX =   re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
 
         this_ap_name = None
         this_ap_cdp_switch_port_local = None
@@ -572,11 +561,7 @@ def main():
 
         if do_rename_ap:
             send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Renaming to name {do_rename_ap['AP_NAME']} for {online_ap}")
-            command = f"enable ; "
-            if args.Xchange: command = command + f"! Xchange crippled "
-            command = command + f"ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']} ; "
-            send_ios_syslog(severity=l_INFO, message=f"RENAME_AP Sending cli([{command}])")
-            cli(command) ; command = ""
+            change_ap(command=f"ap name {online_ap['AP_NAME']} name {do_rename_ap['AP_NAME']}")
 
     def do_dual_5ghz(online_ap:AccessPoint=None):
         if online_ap is None: return
@@ -592,7 +577,9 @@ def main():
             if args.debug: send_ios_syslog(severity=l_DEBUG,
                                            message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']}"
                                                    f" HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
-            if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1'] and match_ap['AP_DUAL_5GHZ'] == "Enabled":
+
+            # TODO always collect.. also deal with explicit Disabled
+            if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1']:
                 # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
                 if args.debug: send_ios_syslog(severity=l_DEBUG,
                                                message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {match_ap['AP_MODEL']}"
@@ -606,14 +593,10 @@ def main():
                     this_ap_slot_dual_mode = None
                     this_ap_slot_admin = None
                     for line in cli_ap_config_slot.splitlines():
-                        f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
-                        pattern_AP_NAME = re.compile(f_regex)
-                        f_regex = rf"^Attributes for Slot (1)"
-                        pattern_AP_SLOT = re.compile(f_regex)
-                        f_regex = rf"^\s+Dual Radio Mode\s+:\s+(.*)"
-                        pattern_AP_SLOT_DUAL_ROLE = re.compile(f_regex)
-                        f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
-                        pattern_AP_SLOT_ADMIN = re.compile(f_regex)
+                        pattern_AP_NAME =           re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+                        pattern_AP_SLOT =           re.compile(rf"^Attributes for Slot (1)")
+                        pattern_AP_SLOT_DUAL_ROLE = re.compile(rf"^\s+Dual Radio Mode\s+:\s+(.*)")
+                        pattern_AP_SLOT_ADMIN =     re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                         # find the line that matches this AP
                         match_cli_ap_name = re.search(pattern_AP_NAME, line)
                         match_cli_ap_slot = re.search(pattern_AP_SLOT, line)
@@ -634,50 +617,43 @@ def main():
                             this_ap_slot_admin = None
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
-                        # once we have the details, break out of the for loop
                         hit_ap = (this_ap_name == online_ap['AP_NAME']
                                   and this_ap_slot and this_ap_slot_dual_mode
                                   and this_ap_slot_admin)
-                        if hit_ap:
-                            if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} "
-                                                                   f"{online_ap['AP_MODEL']} Slot {this_ap_slot} "
-                                                                   f"HIT as mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
+                        if hit_ap and args.debug:
+                            send_ios_syslog(severity=l_DEBUG,
+                                            message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} "
+                                                    f"{online_ap['AP_MODEL']} Slot {this_ap_slot} "
+                                                    f"HIT as mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
                             # update online_ap
                             online_ap['AP_DUAL_5GHZ'] = f"Slot {this_ap_slot} mode {this_ap_slot_dual_mode}"
+                        if hit_ap:
+                            # no need to keep looking, so break the loop checking line
                             break
 
 
-                    if hit_ap and this_ap_slot_dual_mode != "Enabled":
+                    if hit_ap and this_ap_slot_dual_mode != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual_mode for mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
-                        command = f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = f"ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
+                        command = [
+                            f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown",
+                            f"ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable",
+                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown",
+                        ]
+                        change_ap(command=command)
 
-                    if hit_ap and this_ap_slot_admin != "Enabled":
+
+                    if hit_ap and this_ap_slot_admin != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual-5GHz to Admin Enable as dual_mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
+                        command = [
+                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown",
+                        ]
+                        change_ap(command=command)
 
                     # assume we have a longer summary, as this will work for short or long output then
                     # Now check Slot 2
@@ -686,12 +662,9 @@ def main():
                     this_ap_slot = None
                     this_ap_slot_admin = None
                     for line in cli_ap_config_slot.splitlines():
-                        f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
-                        pattern_AP_NAME = re.compile(f_regex)
-                        f_regex = rf"^Attributes for Slot (2)"
-                        pattern_AP_SLOT = re.compile(f_regex)
-                        f_regex = rf"^\s+Administrative State\s+:\s+(.*)"
-                        pattern_AP_SLOT_ADMIN = re.compile(f_regex)
+                        pattern_AP_NAME =       re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+                        pattern_AP_SLOT =       re.compile(rf"^Attributes for Slot (2)")
+                        pattern_AP_SLOT_ADMIN = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                         # find the line that matches this AP
                         match_cli_ap_name = re.search(pattern_AP_NAME, line)
                         match_cli_ap_slot = re.search(pattern_AP_SLOT, line)
@@ -706,29 +679,27 @@ def main():
                             this_ap_slot_admin = None
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_admin:
                             this_ap_slot_admin = match_cli_ap_slot_admin.group(1).strip()
-                        # once we have the details, break out of the for loop
                         hit_ap = (this_ap_name == online_ap['AP_NAME']
                                   and this_ap_slot and this_ap_slot_admin)
-                        if hit_ap:
-                            if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
-                                                                   f"Slot {this_ap_slot} HIT admin {this_ap_slot_admin}")
+                        if hit_ap and args.debug:
+                            send_ios_syslog(severity=l_DEBUG,
+                                            message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                    f"Slot {this_ap_slot} HIT admin {this_ap_slot_admin}")
                             # update online_ap
                             online_ap['AP_DUAL_5GHZ'] = f"{online_ap['AP_DUAL_5GHZ']} / Slot {this_ap_slot} admin {this_ap_slot_admin}"
+                        if hit_ap:
+                            # no need to keep looking, so break the loop checking line
                             break
 
-                    if hit_ap and this_ap_slot_admin != "Enabled":
+                    if hit_ap and this_ap_slot_admin != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual-5GHz to Admin Enable as admin {this_ap_slot_admin}")
-                        command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
+                        command = [
+                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot {this_ap_slot} shutdown"
+                        ]
+                        change_ap(command=command)
 
                 elif match_ap['AP_MODEL'] == "CW9176D1":
                     # assume we have a longer summary, as this will work for short or long output then
@@ -739,16 +710,11 @@ def main():
                     this_ap_slot_method = None
                     this_ap_slot_band = None
                     for line in cli_ap_config_slot.splitlines():
-                        f_regex = rf"^Cisco AP Name\s+:\s+(\S+)"
-                        pattern_AP_NAME = re.compile(f_regex)
-                        f_regex = rf"^Attributes for Slot (0)"
-                        pattern_AP_SLOT = re.compile(f_regex)
-                        f_regex = rf"^\s+Radio Role\s+:\s+(.*)"
-                        pattern_AP_SLOT_ROLE = re.compile(f_regex)
-                        f_regex = rf"^\s+Assignment Method\s+:\s+(.*)"
-                        pattern_AP_SLOT_METHOD = re.compile(f_regex)
-                        f_regex = rf"^\s+Band\s+:\s+(\S+\s+GHz)"
-                        pattern_AP_SLOT_BAND = re.compile(f_regex)
+                        pattern_AP_NAME =           re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+                        pattern_AP_SLOT =           re.compile(rf"^Attributes for Slot (0)")
+                        pattern_AP_SLOT_ROLE =      re.compile(rf"^\s+Radio Role\s+:\s+(.*)")
+                        pattern_AP_SLOT_METHOD =    re.compile(rf"^\s+Assignment Method\s+:\s+(.*)")
+                        pattern_AP_SLOT_BAND =      re.compile(rf"^\s+Band\s+:\s+(\S+\s+GHz)")
                         # find the line that matches this AP
                         match_cli_ap_name = re.search(pattern_AP_NAME, line)
                         match_cli_ap_slot = re.search(pattern_AP_SLOT, line)
@@ -766,49 +732,32 @@ def main():
                             this_ap_slot_method = match_cli_ap_slot_method.group(1).strip()
                         if this_ap_name == online_ap['AP_NAME'] and match_cli_ap_slot_band:
                             this_ap_slot_band = match_cli_ap_slot_band.group(1).strip()
-                        # once we have the details, break out of the for loop
                         hit_ap = (this_ap_name == online_ap['AP_NAME']
                                   and this_ap_slot and this_ap_slot_role and this_ap_slot_method and this_ap_slot_band)
+                        if hit_ap and args.debug:
+                            send_ios_syslog(severity=l_DEBUG,
+                                            message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
+                                                    f"Slot {this_ap_slot} "
+                                                    f"has role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
                         if hit_ap:
-                            if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                                           message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
-                                                                   f"Slot {this_ap_slot} "
-                                                                   f"has role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
+                            # no need to keep looking, so break the loop checking line
                             break
 
                     # update online_ap
                     online_ap['AP_DUAL_5GHZ'] = f"Slot {this_ap_slot} band {this_ap_slot_band}"
 
-                    if hit_ap and this_ap_slot_band != "5 GHz":
+                    if hit_ap and this_ap_slot_band != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to enable dual-5GHz for role {this_ap_slot_role} / method {this_ap_slot_method} / band {this_ap_slot_band}")
-                        command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"ap name {online_ap['AP_NAME']} dot11 dual-band shutdown ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"enable ; "
-                        if args.Xchange: command = command + f"! Xchange crippled "
-                        command = command + f"ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown ; "
-                        send_ios_syslog(severity=l_INFO, message=f"DUAL_5GHZ sending {online_ap['AP_MODEL']} cli([{command}])")
-                        cli(command) ; command = ""
+                        command = [
+                            f"ap name {online_ap['AP_NAME']} dot11 dual-band shutdown",
+                            f"ap name {online_ap['AP_NAME']} dot11 dual-band radio role manual client-serving",
+                            f"ap name {online_ap['AP_NAME']} dot11 dual-band band 5ghz",
+                            f"ap name {online_ap['AP_NAME']} no dot11 dual-band shutdown",
+                        ]
+                        change_ap(command=command)
 
     def process_ap(online_ap:AccessPoint=None):
         get_ap_cdp(online_ap)
