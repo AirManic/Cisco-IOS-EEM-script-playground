@@ -207,7 +207,7 @@ def show_ap(command=None):
     command_seq = []
     for cmd in command_loop:
         command_seq.append(f"{cmd}")
-    send_ios_syslog(severity=l_INFO, message=f"fetching cli([{command}])")
+    if args.debug: send_ios_syslog(severity=l_INFO, message=f"fetching cli([{command}])")
     results = cli(command)
     return results
 
