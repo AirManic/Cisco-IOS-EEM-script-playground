@@ -462,20 +462,20 @@ def main():
                                        message=f"SERIAL ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                f"is {online_ap['AP_SERIAL']}")
 
-    def get_accel(online_ap:AccessPoint=None):
+    def get_tilt(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist("AP_ACCEL")
+        online_ap.make_exist("AP_TILT")
         command = f"show ap name {online_ap['AP_NAME']} accelerometer"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
-        cli_ap_accel_detail = cli(command)
+        cli_ap_tile_detail = cli(command)
         command = ""
-        for line in cli_ap_accel_detail.splitlines():
-            pattern_AP_ACCEL = re.compile(rf"^Accel angle\s+:\s+(.*)")
-            match_cli_ap_accel = re.search(pattern_AP_ACCEL, line)
-            if match_cli_ap_accel:
-                online_ap['AP_ACCEL'] = match_cli_ap_accel.group(1).strip()
+        for line in cli_ap_tile_detail.splitlines():
+            pattern_AP_TILT = re.compile(rf"^Tilt angle\s+:\s+(.*)")
+            match_cli_ap_tilt = re.search(pattern_AP_TILT, line)
+            if match_cli_ap_tilt:
+                online_ap['AP_TILT'] = match_cli_ap_tilt.group(1).strip()
         if args.accel: send_ios_syslog(severity=l_DEBUG,
-                        message=f"ACCEL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_ACCEL']}")
+                        message=f"ACCEL ONLINE {online_ap['AP_MODEL']} {online_ap['AP_NAME']} is {online_ap['AP_TILT']}")
 
     def get_speed_duplex(online_ap:AccessPoint=None):
         if online_ap is None: return
@@ -762,7 +762,7 @@ def main():
     def process_ap(online_ap:AccessPoint=None):
         get_ap_cdp(online_ap)
         get_ap_serial(online_ap)
-        get_accel(online_ap)
+        get_tilt(online_ap)
         get_speed_duplex(online_ap)
         do_ap_rename(online_ap)
         do_dual_5ghz(online_ap)
