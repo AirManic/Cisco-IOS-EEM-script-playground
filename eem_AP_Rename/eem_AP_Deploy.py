@@ -624,9 +624,9 @@ def main():
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual_mode for mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
                         command = [
-                            f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown",
+                            f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 1 shutdown",
                             f"ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable",
-                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown",
+                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown",
                         ]
                         change_ap(command=command)
 
