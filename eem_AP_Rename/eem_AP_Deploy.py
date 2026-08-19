@@ -104,6 +104,7 @@ import os
 from pathlib import Path
 import sys
 import inspect
+from collections import defaultdict
 import re
 import csv
 import time
@@ -218,36 +219,26 @@ def fetch_file(file=None):
         print(f"{file} not found.")
     return results
 
-class AccessPoint(dict):
+class AccessPoint(defaultdict):
 
-    # Define fields to make sure exist
-    csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
-                  'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT', 'AP_CDP_SWITCH_PORT_LOCAL',
-                  'AP_DUAL_5GHZ']
+    def __init__(self, default_factory=str,  *args, **kwargs):
+        super().__init__(default_factory, *args, **kwargs)
 
-    def __init__(self, *args, **kwargs):
-        # Make sure these attributes exist first
-        for field in self.csv_fields: self[field] = None
-        # now load any fields passed in the instantiator call
-        super().__init__(*args, **kwargs)
-        # make sure all fields are strip(), this esp helps when reading csv file headers and values
-        for field in self.csv_fields:
-            if isinstance(self[field],str): self[field] = self[field].strip()
+    def __getitem__(self, key):
+        # First, call standard dict lookup to handle missing keys normally
+        try:
+            value = super().__getitem__(key)
+        except KeyError:
+            return None  # Returns None if the key doesn't exist
+        # If the key exists but is an empty string, return None
+        if value == "":
+            return None
+        return value
 
     def __setitem__(self, key, value):
         new_value = value
         if isinstance(value,str): new_value = value.strip()
         super().__setitem__(key, new_value)
-
-    def make_exist(self,key):
-        key_loop = []
-        if type(key) is str:
-            key_loop.append(key)
-        elif type(key) is list:
-            key_loop = key
-        for item in key_loop:
-            if item not in self:
-                self[item] = None
 
     def match_ap_criteria(self, criteria=None, ap=None,):
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
@@ -329,7 +320,9 @@ def main():
             raw_headers = next(csv.reader([header_line]))
             cleaned_headers = [h.strip() for h in raw_headers]
             for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
-                NEW_APs.append(AccessPoint(ap))
+                append_ap = AccessPoint(**ap)
+                NEW_APs.append(append_ap)
+                if args.debug: send_ios_syslog(message=f"NEW_APs has {append_ap['AP_NAME']} {append_ap}")
     else:
         print(f"{args.infile_csv} not found.")
 
@@ -389,7 +382,6 @@ def main():
 
     def get_ap_cdp(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT" , "AP_CDP_SWITCH_PORT_LOCAL"])
         # assume we have a longer summary, as this will work for short or long output then
         # as we are expecting some AP-s to be dual-enet, so need to find all matches
         pattern_AP_NAME =       re.compile(rf"^AP Name\s+:\s+(\S+)")
@@ -448,7 +440,6 @@ def main():
 
     def get_ap_serial(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist("AP_SERIAL")
         command = f"show ap name {online_ap['AP_NAME']} inventory"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
         cli_ap_serial_detail = cli(command)
@@ -464,7 +455,6 @@ def main():
 
     def get_tilt(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist("AP_TILT")
         command = f"show ap name {online_ap['AP_NAME']} accelerometer"
         if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
         cli_ap_tile_detail = cli(command)
@@ -479,8 +469,6 @@ def main():
 
     def get_speed_duplex(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist(["AP_CDP_SWITCH", "AP_CDP_SWITCH_PORT", "AP_CDP_SWITCH_PORT_LOCAL",
-                              "AP_CDP_SWITCH_PORT_SPEED", "AP_CDP_SWITCH_PORT_DUPLEX"])
         # assume we have a longer summary, as this will work for short or long output then
         # as we are expecting some AP-s to be dual-enet, so need to find all matches
         pattern_AP_NAME =           re.compile(rf"^AP Name\s+:\s+(\S+)")
@@ -512,7 +500,6 @@ def main():
                       and this_ap_cdp_switch_speed and this_ap_cdp_switch_duplex)
 
             if hit_ap:
-
                 # create a new object for checking and potentially appending
                 prep_online_ap = copy.deepcopy(online_ap)
                 prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap_cdp_switch_port_local
@@ -565,7 +552,6 @@ def main():
 
     def do_dual_5ghz(online_ap:AccessPoint=None):
         if online_ap is None: return
-        online_ap.make_exist("AP_DUAL_5GHZ")
         # First look for a full match of all the criteria that is present
         # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
         criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
@@ -754,7 +740,7 @@ def main():
         get_ap_cdp(online_ap)
         get_ap_serial(online_ap)
         get_tilt(online_ap)
-        get_speed_duplex(online_ap)
+        # get_speed_duplex(online_ap)
         do_ap_rename(online_ap)
         do_dual_5ghz(online_ap)
 
