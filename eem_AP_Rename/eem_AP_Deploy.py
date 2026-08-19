@@ -440,10 +440,7 @@ def main():
 
     def get_ap_serial(online_ap:AccessPoint=None):
         if online_ap is None: return
-        command = f"show ap name {online_ap['AP_NAME']} inventory"
-        if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
-        cli_ap_serial_detail = cli(command)
-        command = ""
+        cli_ap_serial_detail = show_ap(command=f"show ap name {online_ap['AP_NAME']} inventory")
         for line in cli_ap_serial_detail.splitlines():
             pattern_AP_SERIAL = re.compile(rf"^PID:.*SN:\s+(\S+)")
             match_cli_ap_serial = re.search(pattern_AP_SERIAL, line)
@@ -455,10 +452,7 @@ def main():
 
     def get_tilt(online_ap:AccessPoint=None):
         if online_ap is None: return
-        command = f"show ap name {online_ap['AP_NAME']} accelerometer"
-        if args.debug: send_ios_syslog(severity=l_INFO, message=f"Fetching cli([{command}])")
-        cli_ap_tile_detail = cli(command)
-        command = ""
+        cli_ap_tile_detail = show_ap(command=f"show ap name {online_ap['AP_NAME']} accelerometer")
         for line in cli_ap_tile_detail.splitlines():
             pattern_AP_TILT = re.compile(rf"^Tilt angle\s+:\s+(.*)")
             match_cli_ap_tilt = re.search(pattern_AP_TILT, line)
