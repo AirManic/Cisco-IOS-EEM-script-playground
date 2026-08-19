@@ -362,7 +362,7 @@ def main():
     for line in cli_results['show_ap_summary'].splitlines():
         # clear and start a new objects
         online_ap = AccessPoint()
-        match_cli = defaultdict(str)
+        match_cli = defaultdict(type(re.Pattern))
         pattern = defaultdict(type(re.Pattern))
         pattern['AP_SUMMARY'] = re.compile(rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)")
         match_cli['AP_SUMMARY'] = re.search(pattern['AP_SUMMARY'], line)
@@ -381,8 +381,9 @@ def main():
     def get_ap_cdp(online_ap:AccessPoint=None):
         if online_ap is None: return
         # clear and start a new objects
-        this_ap = defaultdict(str)
-        match_cli = defaultdict(str)
+        this_ap = AccessPoint()
+        hit_ap = None
+        match_cli = defaultdict(type(re.Pattern))
         pattern = defaultdict(type(re.Pattern))
         pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_SWITCH'] =    re.compile(rf"^Device ID\s+:\s+(\S+)\.")
@@ -392,7 +393,7 @@ def main():
             match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
             if match_cli['AP_NAME']:
                 # clear and start a new this_ap object
-                this_ap = defaultdict(str)
+                this_ap = AccessPoint()
                 this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
             # now process this block, but only for the AP looking for
             if this_ap['AP_NAME'] == online_ap['AP_NAME']:
@@ -434,8 +435,8 @@ def main():
         if online_ap is None: return
         cli_ap_serial_detail = show_ap(command=f"show ap name {online_ap['AP_NAME']} inventory")
         # clear and start a new this_ap object
-        this_ap = defaultdict(str)
-        match_cli = defaultdict(str)
+        this_ap = AccessPoint()
+        match_cli = defaultdict(type(re.Pattern))
         pattern = defaultdict(type(re.Pattern))
         pattern['AP_SERIAL'] = re.compile(rf"^PID:.*SN:\s+(\S+)")
         for line in cli_ap_serial_detail.splitlines():
@@ -450,8 +451,8 @@ def main():
         if online_ap is None: return
         cli_ap_tile_detail = show_ap(command=f"show ap name {online_ap['AP_NAME']} accelerometer")
         # clear and start a new this_ap object
-        this_ap = defaultdict(str)
-        match_cli = defaultdict(str)
+        this_ap = AccessPoint()
+        match_cli = defaultdict(type(re.Pattern))
         pattern = defaultdict(type(re.Pattern))
         pattern['AP_TILT'] = re.compile(rf"^Tilt angle\s+:\s+(.*)")
         for line in cli_ap_tile_detail.splitlines():
@@ -464,8 +465,8 @@ def main():
     def get_speed_duplex(online_ap:AccessPoint=None):
         if online_ap is None: return
         # clear and start a new objects
-        this_ap = defaultdict(str)
-        match_cli = defaultdict(str)
+        this_ap = AccessPoint()
+        match_cli = defaultdict(type(re.Pattern))
         pattern = defaultdict(type(re.Pattern))
         pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_SPEED_DUPLEX'] =   re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
@@ -474,7 +475,7 @@ def main():
             match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
             if match_cli['AP_NAME']:
                 # clear and start a new this_ap object
-                this_ap = defaultdict(str)
+                this_ap = AccessPoint()
                 this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
             # now process this block, but only for the AP looking for
             if this_ap['AP_NAME'] == online_ap['AP_NAME']:
@@ -563,10 +564,10 @@ def main():
                 if match_ap['AP_MODEL'] == "CW9178I":
                     # assume we have a longer summary, as this will work for short or long output then
                     # Check Slot 1 first
-                    hit_ap = None
                     # clear and start a new objects
-                    this_ap = defaultdict(str)
-                    match_cli = defaultdict(str)
+                    this_ap = AccessPoint()
+                    hit_ap = None
+                    match_cli = defaultdict(type(re.Pattern))
                     pattern = defaultdict(type(re.Pattern))
                     pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                     pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (1)")
@@ -580,7 +581,7 @@ def main():
                         match_cli['AP_SLOT_ADMIN'] = re.search(pattern['AP_SLOT_ADMIN'], line)
                         if match_cli['AP_NAME']:
                             # clear and start a new this_ap object
-                            this_ap = defaultdict(str)
+                            this_ap = AccessPoint()
                             this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
                         # now process this block, but only for the AP looking for
                         if this_ap['AP_NAME'] == online_ap['AP_NAME'] and match_cli['AP_SLOT']:
@@ -621,10 +622,10 @@ def main():
 
                     # assume we have a longer summary, as this will work for short or long output then
                     # Now check Slot 2
-                    hit_ap = None
                     # clear and start a new objects
-                    this_ap = defaultdict(str)
-                    match_cli = defaultdict(str)
+                    this_ap = AccessPoint()
+                    hit_ap = None
+                    match_cli = defaultdict(type(re.Pattern))
                     pattern = defaultdict(type(re.Pattern))
                     pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                     pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
@@ -636,7 +637,7 @@ def main():
                         match_cli['AP_SLOT_ADMIN'] = re.search(pattern['AP_SLOT_ADMIN'], line)
                         if match_cli['AP_NAME']:
                             # clear and start a new this_ap object
-                            this_ap = defaultdict(str)
+                            this_ap = AccessPoint()
                             this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
                         # now process this block, but only for the AP looking for
                         if this_ap['AP_NAME'] == online_ap['AP_NAME'] and match_cli['AP_SLOT']:
@@ -664,10 +665,10 @@ def main():
 
                 elif match_ap['AP_MODEL'] == "CW9176D1":
                     # assume we have a longer summary, as this will work for short or long output then
-                    hit_ap = None
                     # clear and start a new objects
-                    this_ap = defaultdict(str)
-                    match_cli = defaultdict(str)
+                    this_ap = AccessPoint()
+                    hit_ap = None
+                    match_cli = defaultdict(type(re.Pattern))
                     pattern = defaultdict(type(re.Pattern))
                     pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                     pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (0)")
