@@ -617,19 +617,14 @@ def main():
                             # no need to keep looking, so break the loop checking line
                             break
 
-
                     if hit_ap and this_ap_slot_dual_mode != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ ONLINE {online_ap['AP_NAME']} {online_ap['AP_MODEL']} "
                                                 f"Slot {this_ap_slot} "
                                                 f"changing to dual_mode for mode {this_ap_slot_dual_mode} / admin {this_ap_slot_admin}")
-                        command = [
-                            f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 1 shutdown",
-                            f"ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable",
-                            f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 1 shutdown",
-                        ]
-                        change_ap(command=command)
-
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} dot11 5ghz slot 2 shutdown")
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} dot11 5ghz dual-radio mode enable")
+                        change_ap(command=f"ap name {online_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown")
 
                     if hit_ap and this_ap_slot_admin != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
