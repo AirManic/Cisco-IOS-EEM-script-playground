@@ -384,7 +384,6 @@ def main():
 
     def get_ap_cdp(chk_ap:AccessPoint=None):
         if chk_ap is None: return
-        if chk_ap is None: return
         # clear and start a new objects
         this_ap = AccessPoint()
         pattern = defaultdict(lambda : re.compile(rf'~'))
