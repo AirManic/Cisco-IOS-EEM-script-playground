@@ -363,10 +363,9 @@ def main():
     ONLINE_APs = []
 
     # build list of online AP from show ap summary
-    # pattern = defaultdict(type(re.Pattern))
     pattern = defaultdict(lambda : re.compile(rf'~'))
     pattern['AP_SUMMARY'] = re.compile(rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)")
-    match_cli = defaultdict(type(re.Pattern))
+    match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_ap_summary'].splitlines():
         # clear and start a new objects
         online_ap = AccessPoint()
@@ -392,7 +391,7 @@ def main():
         pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_CDP_SWITCH'] =    re.compile(rf"^Device ID\s+:\s+(\S+)\.")
         pattern['AP_INTERFACE'] =   re.compile(rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)")
-        match_cli = defaultdict(type(re.Pattern))
+        match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_results['show_cdp_neighbor'].splitlines():
             # find the line that matches this AP
             match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
@@ -450,7 +449,7 @@ def main():
         this_ap = AccessPoint()
         pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_SERIAL'] = re.compile(rf"^PID:.*SN:\s+(\S+)")
-        match_cli = defaultdict(type(re.Pattern))
+        match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_ap_serial_detail.splitlines():
             match_cli['AP_SERIAL'] = re.search(pattern['AP_SERIAL'], line)
             if match_cli['AP_SERIAL']:
@@ -466,7 +465,7 @@ def main():
         this_ap = AccessPoint()
         pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_TILT'] = re.compile(rf"^Tilt angle\s+:\s+(.*)")
-        match_cli = defaultdict(type(re.Pattern))
+        match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_ap_tile_detail.splitlines():
             match_cli['AP_TILT'] = re.search(pattern['AP_TILT'], line)
             if match_cli['AP_TILT']:
@@ -481,7 +480,7 @@ def main():
         pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_SPEED_DUPLEX'] =   re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
-        match_cli = defaultdict(type(re.Pattern))
+        match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_results['show_ap_ether_stats'].splitlines():
             # find the line that matches this AP
             match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
@@ -642,7 +641,7 @@ def main():
                     pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                     pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
                     pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
-                    match_cli = defaultdict(type(re.Pattern))
+                    match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                     for line in cli_results['show_ap_config_slot'].splitlines():
                         # find the line that matches this AP
                         match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
@@ -687,7 +686,7 @@ def main():
                     pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(.*)")
                     pattern['AP_SLOT_METHOD'] = re.compile(rf"^\s+Assignment Method\s+:\s+(.*)")
                     pattern['AP_SLOT_BAND'] = re.compile(rf"^\s+Band\s+:\s+(\S+\s+GHz)")
-                    match_cli = defaultdict(type(re.Pattern))
+                    match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                     for line in cli_results['show_ap_config_slot'].splitlines():
                         # find the line that matches this AP
                         match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
