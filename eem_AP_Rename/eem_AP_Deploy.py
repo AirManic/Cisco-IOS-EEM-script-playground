@@ -647,11 +647,12 @@ def main():
                         match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
                         match_cli['AP_SLOT'] = re.search(pattern['AP_SLOT'], line)
                         match_cli['AP_SLOT_ADMIN'] = re.search(pattern['AP_SLOT_ADMIN'], line)
-                        if match_cli['AP_NAME']:
+                        if (this_ap['AP_NAME'] is None
+                            and match_cli['AP_NAME']
+                            and match_cli['AP_NAME'].group(1) == chk_ap['AP_NAME']):
                             # clear and start a new this_ap object
-                            # this_ap = AccessPoint()
+                            this_ap = AccessPoint()
                             this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
-                        # now process this block, but only for the AP looking for
                         if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT']:
                             this_ap['AP_SLOT'] = match_cli['AP_SLOT'].group(1)
                         if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT_ADMIN']:
@@ -667,7 +668,8 @@ def main():
                         # no need to keep looking, so break the loop checking line
                         if match_cli['HIT']: break
 
-                    if (match_cli['HIT'] and this_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
+                    if (match_cli['HIT']
+                            and this_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
                         send_ios_syslog(severity=l_INFO,
                                         message=f"DUAL_5GHZ ONLINE {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} "
                                                 f"Slot {this_ap['AP_SLOT']} "
@@ -692,17 +694,26 @@ def main():
                         match_cli['AP_SLOT_ROLE'] = re.search(pattern['AP_SLOT_ROLE'], line)
                         match_cli['AP_SLOT_METHOD'] = re.search(pattern['AP_SLOT_METHOD'], line)
                         match_cli['AP_SLOT_BAND'] = re.search(pattern['AP_SLOT_BAND'], line)
-                        if match_cli['AP_NAME']:
+                        if (this_ap['AP_NAME'] is None
+                            and match_cli['AP_NAME']):
                             this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
-                        # now process this block, but only for the AP looking for
-                        if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT']:
+                        if (this_ap['AP_NAME']
+                                and this_ap['AP_SLOT'] is None
+                                and match_cli['AP_SLOT']):
                             this_ap['AP_SLOT'] = match_cli['AP_SLOT'].group(1)
-                        if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT_ROLE']:
+                        if (this_ap['AP_SLOT']
+                                and this_ap['AP_SLOT_ROLE'] is None
+                                and match_cli['AP_SLOT_ROLE']):
                             this_ap['AP_SLOT_ROLE'] = match_cli['AP_SLOT_ROLE'].group(1).strip()
-                        if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT_METHOD']:
+                        if (this_ap['AP_SLOT_ROLE']
+                                and this_ap['AP_SLOT_METHOD'] is None
+                                and match_cli['AP_SLOT_METHOD']):
                             this_ap['AP_SLOT_METHOD'] = match_cli['AP_SLOT_METHOD'].group(1).strip()
-                        if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT_BAND']:
+                        if (this_ap['AP_SLOT_METHOD']
+                                and this_ap['AP_SLOT_BAND'] is None
+                                and match_cli['AP_SLOT_BAND']):
                             this_ap['AP_SLOT_BAND'] = match_cli['AP_SLOT_BAND'].group(1).strip()
+
                         match_cli['HIT'] = (this_ap['AP_NAME'] == chk_ap['AP_NAME']
                                   and this_ap['AP_SLOT'] and this_ap['AP_SLOT_ROLE'] and this_ap['AP_SLOT_METHOD'] and this_ap['AP_SLOT_BAND'])
                         if match_cli['HIT'] and args.debug:
