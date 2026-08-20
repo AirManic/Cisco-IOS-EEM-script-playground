@@ -363,7 +363,8 @@ def main():
     ONLINE_APs = []
 
     # build list of online AP from show ap summary
-    pattern = defaultdict(type(re.Pattern))
+    # pattern = defaultdict(type(re.Pattern))
+    pattern = defaultdict(lambda : re.compile(rf'~'))
     pattern['AP_SUMMARY'] = re.compile(rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)")
     match_cli = defaultdict(type(re.Pattern))
     for line in cli_results['show_ap_summary'].splitlines():
@@ -387,7 +388,7 @@ def main():
         if chk_ap is None: return
         # clear and start a new objects
         this_ap = AccessPoint()
-        pattern = defaultdict(type(re.Pattern))
+        pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_CDP_SWITCH'] =    re.compile(rf"^Device ID\s+:\s+(\S+)\.")
         pattern['AP_INTERFACE'] =   re.compile(rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)")
@@ -447,7 +448,7 @@ def main():
         cli_ap_serial_detail = show_ap(command=f"show ap name {chk_ap['AP_NAME']} inventory")
         # clear and start a new this_ap object
         this_ap = AccessPoint()
-        pattern = defaultdict(type(re.Pattern))
+        pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_SERIAL'] = re.compile(rf"^PID:.*SN:\s+(\S+)")
         match_cli = defaultdict(type(re.Pattern))
         for line in cli_ap_serial_detail.splitlines():
@@ -463,7 +464,7 @@ def main():
         cli_ap_tile_detail = show_ap(command=f"show ap name {chk_ap['AP_NAME']} accelerometer")
         # clear and start a new this_ap object
         this_ap = AccessPoint()
-        pattern = defaultdict(type(re.Pattern))
+        pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_TILT'] = re.compile(rf"^Tilt angle\s+:\s+(.*)")
         match_cli = defaultdict(type(re.Pattern))
         for line in cli_ap_tile_detail.splitlines():
@@ -477,7 +478,7 @@ def main():
         if chk_ap is None: return
         # clear and start a new objects
         this_ap = AccessPoint()
-        pattern = defaultdict(type(re.Pattern))
+        pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_SPEED_DUPLEX'] =   re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
         match_cli = defaultdict(type(re.Pattern))
@@ -637,7 +638,7 @@ def main():
                     # Now check Slot 2
                     # clear and start a new objects
                     this_ap = AccessPoint()
-                    pattern = defaultdict(type(re.Pattern))
+                    pattern = defaultdict(lambda : re.compile(rf'~'))
                     pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                     pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
                     pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
@@ -680,7 +681,7 @@ def main():
                     # assume we have a longer summary, as this will work for short or long output then
                     # clear and start a new objects
                     this_ap = AccessPoint()
-                    pattern = defaultdict(type(re.Pattern))
+                    pattern = defaultdict(lambda : re.compile(rf'~'))
                     pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                     pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (0)")
                     pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(.*)")
