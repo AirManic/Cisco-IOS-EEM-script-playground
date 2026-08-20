@@ -653,12 +653,17 @@ def main():
                             # clear and start a new this_ap object
                             this_ap = AccessPoint()
                             this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
-                        if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT']:
+                        if (this_ap['AP_NAME']
+                                and this_ap['AP_SLOT'] is None
+                                and match_cli['AP_SLOT']):
                             this_ap['AP_SLOT'] = match_cli['AP_SLOT'].group(1)
-                        if this_ap['AP_NAME'] == chk_ap['AP_NAME'] and match_cli['AP_SLOT_ADMIN']:
+                        if (this_ap['AP_SLOT']
+                                and this_ap['AP_SLOT_ADMIN'] is None
+                                and match_cli['AP_SLOT_ADMIN']):
                             this_ap['AP_SLOT_ADMIN'] = match_cli['AP_SLOT_ADMIN'].group(1).strip()
-                        match_cli['HIT'] = (this_ap['AP_NAME'] == chk_ap['AP_NAME']
-                                            and this_ap['AP_SLOT'] and this_ap['AP_SLOT_ADMIN'])
+                        match_cli['HIT'] = (this_ap['AP_NAME']
+                                            and this_ap['AP_SLOT']
+                                            and this_ap['AP_SLOT_ADMIN'])
                         if match_cli['HIT'] and args.debug:
                             send_ios_syslog(severity=l_DEBUG,
                                             message=f"DUAL_5GHZ ONLINE {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
