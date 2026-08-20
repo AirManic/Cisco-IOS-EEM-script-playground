@@ -310,7 +310,7 @@ def main():
                         help=f"print debug message")
     parser.add_argument('-X', '--Xchange', required=False, action='store_true',
                         help=f"don't actually make change")
-    args = parser.parse_args()
+    args, args_unknown = parser.parse_known_args()
 
     NEW_APs = []
 
