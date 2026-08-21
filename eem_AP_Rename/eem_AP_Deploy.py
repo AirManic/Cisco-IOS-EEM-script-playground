@@ -481,11 +481,9 @@ def main():
         pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
         match_cli = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_results['show_ap_ether_stats'].splitlines():
-            send_ios_syslog(severity=l_DEBUG,
-                            message=f"SPEED_DUPLEX ONLINE {chk_ap['AP_NAME']} executing {line}")
             # find the line that matches this AP
             match_cli['AP_NAME'] = re.search(pattern['AP_NAME'], line)
-            match_cli['AP_SPEED_DUPLEX'] = re.search(pattern['AP_CDP_SPEED_DUPLEX'], line)
+            match_cli['AP_SPEED_DUPLEX'] = re.search(pattern['AP_SPEED_DUPLEX'], line)
             if (this_ap['AP_NAME'] is None
                     and match_cli['AP_NAME']
                     and match_cli['AP_NAME'].group(1) == chk_ap['AP_NAME']):
@@ -493,23 +491,20 @@ def main():
                 this_ap = AccessPoint()
                 this_ap['AP_NAME'] = match_cli['AP_NAME'].group(1)
             if (this_ap['AP_NAME']
-                    and this_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
-                    and this_ap['AP_CDP_SWITCH_PORT_SPEED'] is None
-                    and this_ap['AP_CDP_SWITCH_PORT_DUPLEX'] is None
                     and match_cli['AP_SPEED_DUPLEX']):
                 this_ap['AP_CDP_SWITCH_PORT_LOCAL'] = match_cli['AP_SPEED_DUPLEX'].group(1)
                 this_ap['AP_CDP_SWITCH_PORT_SPEED'] = match_cli['AP_SPEED_DUPLEX'].group(3)
                 this_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = match_cli['AP_SPEED_DUPLEX'].group(5)
-            match_cli['HIT'] = (this_ap['AP_NAME'] )
-                                # and this_ap['AP_CDP_SWITCH_PORT_LOCAL']
-                                # and this_ap['AP_CDP_SWITCH_PORT_SPEED'] and this_ap['AP_CDP_SWITCH_PORT_DUPLEX'])
+            match_cli['HIT'] = (this_ap['AP_NAME']
+                                and this_ap['AP_CDP_SWITCH_PORT_LOCAL']
+                                and this_ap['AP_CDP_SWITCH_PORT_SPEED'] and this_ap['AP_CDP_SWITCH_PORT_DUPLEX'])
 
             if match_cli['HIT']:
                 # create a new object for checking and potentially appending
                 prep_online_ap = copy.deepcopy(chk_ap)
                 prep_online_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap['AP_CDP_SWITCH_PORT_LOCAL']
-                prep_online_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap['AP_CDP_SWITCH_SPEED']
-                prep_online_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap['AP_CDP_SWITCH_DUPLEX']
+                prep_online_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap['AP_CDP_SWITCH_PORT_SPEED']
+                prep_online_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap['AP_CDP_SWITCH_PORT_DUPLEX']
 
                 if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"SPEED_DUPLEX detected {prep_online_ap}")
                 # see if we already added this AP, if not then add it
@@ -517,8 +512,8 @@ def main():
                                                       ap_list=ONLINE_APs)
                 if  match_ap:
                     match_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap['AP_CDP_SWITCH_PORT_LOCAL']
-                    match_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap['AP_CDP_SWITCH_SPEED']
-                    match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap['AP_CDP_SWITCH_DUPLEX']
+                    match_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap['AP_CDP_SWITCH_PORT_SPEED']
+                    match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = this_ap['AP_CDP_SWITCH_PORT_DUPLEX']
                 elif chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None:
                      chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] = this_ap['AP_CDP_SWITCH_PORT_LOCAL']
                      chk_ap['AP_CDP_SWITCH_PORT_SPEED'] = this_ap['AP_CDP_SWITCH_SPEED']
@@ -527,13 +522,13 @@ def main():
                     ONLINE_APs.append(prep_online_ap)
 
             # no need to keep looking, so break the loop checking line
-            if match_cli['HIT']:
+            if match_cli['HIT'] and args.debug:
                 send_ios_syslog(severity=l_DEBUG,
                                 message=f"SPEED_DUPLEX ONLINE {this_ap['AP_NAME']} "
                                         f"{this_ap['AP_CDP_SWITCH_PORT_LOCAL']} "
                                         f"HIT as {this_ap['AP_CDP_SWITCH_PORT_SPEED']} / {this_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
-                break
-
+                pass
+                # do not clear the this_ap object and do not break the loop, as we might have multiple interfaces
 
         if args.speed: send_ios_syslog(severity=l_DEBUG,
                                        message=f"SPEED_DUPLEX ONLINE {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
@@ -763,7 +758,7 @@ def main():
             do_dual_5ghz(chk_ap)
         except Exception:
             pass
-        get_speed_duplex(online_ap)
+        get_speed_duplex(chk_ap)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Start the load operations and mark each future with its URL
