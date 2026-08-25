@@ -478,7 +478,7 @@ def main():
         for line in cli_ap_tile_detail.splitlines():
             cli_match['AP_TILT'] = re.search(pattern['AP_TILT'], line)
             if cli_match['AP_TILT']:
-                chk_ap['AP_TILT'] = cli_match['AP_TILT'].group(1).strip()
+                chk_ap['AP_TILT'] = cli_match['AP_TILT'].group(1)
         if args.accel: send_ios_syslog(severity=l_DEBUG,
                         message=f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
 
@@ -499,7 +499,7 @@ def main():
                 cli_ap = AccessPoint()
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-            if (cli_ap['AP_NAME'] and cli_match['AP_SPEED_DUPLEX']):
+            if cli_ap['AP_NAME'] and cli_match['AP_SPEED_DUPLEX']:
                 cli_ap['AP_CDP_SWITCH_PORT_LOCAL'] = cli_match['AP_SPEED_DUPLEX'].group(1)
                 cli_ap['AP_CDP_SWITCH_PORT_SPEED'] = cli_match['AP_SPEED_DUPLEX'].group(3)
                 cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = cli_match['AP_SPEED_DUPLEX'].group(5)
@@ -508,6 +508,9 @@ def main():
                                 and cli_ap['AP_CDP_SWITCH_PORT_SPEED'] and cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'])
             if cli_match['HIT']:
                 if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"detected cli_ap {cli_ap}")
+                if chk_ap['AP_NAME'] == "TAMWAP001-144":
+                    send_ios_syslog(severity=l_DEBUG, message=f"why append chk_ap {chk_ap}")
+
                 # most likely, this is the only AP entry and this is first AP_CDP_SWITCH_PORT_LOCAL need to track
                 if (chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
                         or chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] == cli_ap['AP_CDP_SWITCH_PORT_LOCAL']):
@@ -517,6 +520,7 @@ def main():
                     match_ap = cli_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
                                                    ap_list=ONLINE_APs)
                     if match_ap is None:
+                        send_ios_syslog(severity=l_DEBUG, message=f"why append cli_ap {cli_ap}")
                         # create a new object for checking and potentially appending
                         match_ap = copy.deepcopy(chk_ap)
                         ONLINE_APs.append(match_ap)
@@ -625,11 +629,11 @@ def main():
                         if (cli_ap['AP_SLOT']
                                 and cli_ap['AP_SLOT_DUAL_ROLE'] is None
                                 and cli_match['AP_SLOT_DUAL_ROLE']):
-                            cli_ap['AP_SLOT_DUAL_ROLE'] = cli_match['AP_SLOT_DUAL_ROLE'].group(1).strip()
+                            cli_ap['AP_SLOT_DUAL_ROLE'] = cli_match['AP_SLOT_DUAL_ROLE'].group(1)
                         if (cli_ap['AP_SLOT_DUAL_ROLE']
                                 and cli_ap['AP_SLOT_ADMIN'] is None
                                 and cli_match['AP_SLOT_ADMIN']):
-                            cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1).strip()
+                            cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
 
                         cli_match['HIT'] = (cli_ap['AP_NAME']
                                             and cli_ap['AP_SLOT']
@@ -689,7 +693,7 @@ def main():
                         if (cli_ap['AP_SLOT']
                                 and cli_ap['AP_SLOT_ADMIN'] is None
                                 and cli_match['AP_SLOT_ADMIN']):
-                            cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1).strip()
+                            cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
                         cli_match['HIT'] = (cli_ap['AP_NAME']
                                             and cli_ap['AP_SLOT']
                                             and cli_ap['AP_SLOT_ADMIN'])
@@ -739,15 +743,15 @@ def main():
                         if (cli_ap['AP_SLOT']
                                 and cli_ap['AP_SLOT_ROLE'] is None
                                 and cli_match['AP_SLOT_ROLE']):
-                            cli_ap['AP_SLOT_ROLE'] = cli_match['AP_SLOT_ROLE'].group(1).strip()
+                            cli_ap['AP_SLOT_ROLE'] = cli_match['AP_SLOT_ROLE'].group(1)
                         if (cli_ap['AP_SLOT_ROLE']
                                 and cli_ap['AP_SLOT_METHOD'] is None
                                 and cli_match['AP_SLOT_METHOD']):
-                            cli_ap['AP_SLOT_METHOD'] = cli_match['AP_SLOT_METHOD'].group(1).strip()
+                            cli_ap['AP_SLOT_METHOD'] = cli_match['AP_SLOT_METHOD'].group(1)
                         if (cli_ap['AP_SLOT_METHOD']
                                 and cli_ap['AP_SLOT_BAND'] is None
                                 and cli_match['AP_SLOT_BAND']):
-                            cli_ap['AP_SLOT_BAND'] = cli_match['AP_SLOT_BAND'].group(1).strip()
+                            cli_ap['AP_SLOT_BAND'] = cli_match['AP_SLOT_BAND'].group(1)
 
                         cli_match['HIT'] = (cli_ap['AP_NAME'] == chk_ap['AP_NAME']
                                   and cli_ap['AP_SLOT'] and cli_ap['AP_SLOT_ROLE'] and cli_ap['AP_SLOT_METHOD'] and cli_ap['AP_SLOT_BAND'])
@@ -774,12 +778,12 @@ def main():
 
     def process_ap(chk_ap:AccessPoint=None):
         try:
+            get_speed_duplex(chk_ap)
             get_ap_cdp(chk_ap)
             get_ap_serial(chk_ap)
             get_tilt(chk_ap)
             do_ap_rename(chk_ap)
             do_dual_5ghz(chk_ap)
-            get_speed_duplex(chk_ap)
         except Exception:
             pass
 
