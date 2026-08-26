@@ -368,7 +368,8 @@ def main():
         else:
             cli_results['show_ap_summary'] = show_ap(command=f"show ap summary")
             cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap cdp neighbor detail")
-            cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap ethernet statistics")
+            # TODO Remove
+            # cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap ethernet statistics")
             cli_results['show_ap_config_slot'] = show_ap(command=f"show ap config slot")
     else:
         cli_results['show_ap_summary'] = fetch_file(file=SIM_FILE_EEM_AP_SUMM)
@@ -400,6 +401,9 @@ def main():
 
     def get_ap_cdp(chk_ap=None):
         if chk_ap is None: return
+        cli_ap_cdp_neighbor = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
+        if not is_guestshell:
+            cli_ap_cdp_neighbor = cli_results['show_cdp_neighbor']
         # clear and start a new objects
         cli_ap = AccessPoint()
         pattern = defaultdict(lambda : re.compile(rf'~'))
@@ -407,7 +411,7 @@ def main():
         pattern['AP_CDP_SWITCH'] =    re.compile(rf"^Device ID\s+:\s+(\S+)\.")
         pattern['AP_INTERFACE'] =   re.compile(rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)")
         cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
-        for line in cli_results['show_cdp_neighbor'].splitlines():
+        for line in cli_ap_cdp_neighbor.splitlines():
             # find the line that matches this AP
             cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
             cli_match['AP_CDP_SWITCH'] = re.search(pattern['AP_CDP_SWITCH'], line)
@@ -485,13 +489,16 @@ def main():
 
     def get_speed_duplex(chk_ap=None):
         if chk_ap is None: return
+        cli_ap_ether_stats = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
+        if not is_guestshell:
+            cli_ap_ether_stats = cli_results['show_ap_ether_stats']
         # clear and start a new objects
         cli_ap = AccessPoint()
         pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_NAME'] =            re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
         cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
-        for line in cli_results['show_ap_ether_stats'].splitlines():
+        for line in cli_ap_ether_stats.splitlines():
             # find the line that matches this AP
             cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
             cli_match['AP_SPEED_DUPLEX'] = re.search(pattern['AP_SPEED_DUPLEX'], line)
@@ -779,12 +786,12 @@ def main():
 
     def process_ap(chk_ap=None):
         try:
+            get_ap_serial(chk_ap)
             get_ap_cdp(chk_ap)
             get_speed_duplex(chk_ap)
-            get_ap_serial(chk_ap)
             get_tilt(chk_ap)
-            do_ap_rename(chk_ap)
             do_dual_5ghz(chk_ap)
+            do_ap_rename(chk_ap)
         except Exception:
             pass
 
