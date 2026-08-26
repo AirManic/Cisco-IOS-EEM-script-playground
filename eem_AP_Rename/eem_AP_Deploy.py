@@ -105,6 +105,7 @@ from pathlib import Path
 import sys
 import inspect
 from collections import defaultdict
+from typing import Union
 import re
 import csv
 import time
@@ -181,7 +182,7 @@ def send_ios_syslog(message:str=None, severity:int=l_INFO):
     except FileNotFoundError:
         print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside IOS-XE iox guestshell.")
 
-def show_ap(command:str|list=None):
+def show_ap(command:Union[str,list]=None):
     command_loop = []
     if type(command) is str:
         command_loop.append(command)
@@ -194,7 +195,7 @@ def show_ap(command:str|list=None):
     results = cli(command)
     return results
 
-def change_ap(command:str|list=None):
+def change_ap(command:Union[str,list]=None):
     command_loop = [f"enable"]
     if type(command) is str:
         command_loop.append(f"{command}")
@@ -244,7 +245,7 @@ class AccessPoint(defaultdict):
         if isinstance(value,str): new_value = value.strip()
         super().__setitem__(key, new_value)
 
-    def match_ap_criteria(self, criteria:list=None, ap:AccessPoint=None,):
+    def match_ap_criteria(self, criteria:list=None, ap=None):
         criteria_loop = []
         if type(criteria) is str:
             criteria_loop.append(criteria)
@@ -281,7 +282,7 @@ class AccessPoint(defaultdict):
             ap_return = ap
         return ap_return
 
-    def matching_ap(self, criteria:list=None, ap_list:AccessPoint|list[AccessPoint]=None):
+    def matching_ap(self, criteria:list=None, ap_list:list=None):
         # self is expected to be reference to find, and ap might/might not exist but has the key criteria
         ap_loop = []
         if type(ap_list) is str:
@@ -397,7 +398,7 @@ def main():
     # Sort them for added sanity to process loops in a way most humans think
     sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
 
-    def get_ap_cdp(chk_ap:AccessPoint=None):
+    def get_ap_cdp(chk_ap=None):
         if chk_ap is None: return
         # clear and start a new objects
         cli_ap = AccessPoint()
@@ -451,7 +452,7 @@ def main():
                 # clear and start a new cli_ap object
                 cli_ap = AccessPoint()
 
-    def get_ap_serial(chk_ap:AccessPoint=None):
+    def get_ap_serial(chk_ap=None):
         if chk_ap is None: return
         cli_ap_serial_detail = show_ap(command=f"show ap name {chk_ap['AP_NAME']} inventory")
         # clear and start a new cli_ap object
@@ -467,7 +468,7 @@ def main():
                                        message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
                                                f" is {chk_ap['AP_SERIAL']}")
 
-    def get_tilt(chk_ap:AccessPoint=None):
+    def get_tilt(chk_ap=None):
         if chk_ap is None: return
         cli_ap_tile_detail = show_ap(command=f"show ap name {chk_ap['AP_NAME']} accelerometer")
         # clear and start a new cli_ap object
@@ -482,7 +483,7 @@ def main():
         if args.accel: send_ios_syslog(severity=l_DEBUG,
                         message=f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
 
-    def get_speed_duplex(chk_ap:AccessPoint=None):
+    def get_speed_duplex(chk_ap=None):
         if chk_ap is None: return
         # clear and start a new objects
         cli_ap = AccessPoint()
@@ -559,7 +560,7 @@ def main():
                                             f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} against expected {expected_speed}"
                                             f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
 
-    def do_ap_rename(chk_ap:AccessPoint=None):
+    def do_ap_rename(chk_ap=None):
         if chk_ap is None: return
         # First look for a full match of all the criteria that is present
         # only look for AP-s that need to be renamed, so match does not include AP_NAME itself
@@ -577,7 +578,7 @@ def main():
                                 message=f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} name {match_ap['AP_NAME']}")
 
-    def do_dual_5ghz(chk_ap:AccessPoint=None):
+    def do_dual_5ghz(chk_ap=None):
         if chk_ap is None: return
         # First look for a full match of all the criteria that is present
         # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
@@ -776,7 +777,7 @@ def main():
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
-    def process_ap(chk_ap:AccessPoint=None):
+    def process_ap(chk_ap=None):
         try:
             get_ap_cdp(chk_ap)
             get_speed_duplex(chk_ap)
