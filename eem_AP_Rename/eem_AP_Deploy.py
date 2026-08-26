@@ -246,9 +246,9 @@ class AccessPoint(defaultdict):
 
     def match_ap_criteria(self, criteria:list=None, ap:AccessPoint=None,):
         criteria_loop = []
-        if criteria is type(str):
-            criteria_loop = criteria.append(criteria)
-        if criteria is type(list):
+        if type(criteria) is str:
+            criteria_loop.append(criteria)
+        if type(criteria) is list:
             criteria_loop = criteria_loop + criteria
         # self is expected to be a real AP, and ap is an AP that might/might not exist but has the key criteria
         # track if there is at least one criteria item called out that matches
@@ -284,14 +284,14 @@ class AccessPoint(defaultdict):
     def matching_ap(self, criteria:list=None, ap_list:AccessPoint|list[AccessPoint]=None):
         # self is expected to be reference to find, and ap might/might not exist but has the key criteria
         ap_loop = []
-        if ap_list is type(str):
+        if type(ap_list) is str:
             ap_loop.append(ap_list)
-        if ap_list is type(list):
+        if type(ap_list) is list:
             ap_loop = ap_loop + ap_list
         criteria_loop = []
-        if criteria is type(str):
-            criteria_loop = criteria.append(criteria)
-        if criteria is type(list):
+        if type(criteria) is str:
+            criteria_loop.append(criteria)
+        if type(criteria) is list:
             criteria_loop = criteria_loop + criteria
         match_ap = next( (ap for ap in ap_loop if
                          self.match_ap_criteria(criteria=criteria_loop, ap=ap) ), None )
@@ -345,7 +345,7 @@ def main():
         print(f"{args.infile_csv} not found.")
 
     if args.debug:
-        send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {len(NEW_APs)} APs from infile_csv {args.infile_csv}")
+        # send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {len(NEW_APs)} APs from infile_csv {args.infile_csv}")
         for ap in NEW_APs:
             send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {ap['AP_NAME']} {ap}")
 
@@ -439,7 +439,7 @@ def main():
                     match_ap = chk_ap
                 else:
                     # see if we already added this AP, if not then add it
-                    match_ap = chk_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
+                    match_ap = cli_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
                                                           ap_list=ONLINE_APs)
                     if not match_ap:
                         # create a new object for checking and potentially appending
@@ -506,10 +506,9 @@ def main():
             cli_match['HIT'] = (cli_ap['AP_NAME']
                                 and cli_ap['AP_CDP_SWITCH_PORT_LOCAL']
                                 and cli_ap['AP_CDP_SWITCH_PORT_SPEED'] and cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'])
+
             if cli_match['HIT']:
                 if args.debug: send_ios_syslog(severity=l_DEBUG, message=f"detected cli_ap {cli_ap}")
-                if chk_ap['AP_NAME'] == "TAMWAP001-144":
-                    send_ios_syslog(severity=l_DEBUG, message=f"why append chk_ap {chk_ap}")
 
                 # most likely, this is the only AP entry and this is first AP_CDP_SWITCH_PORT_LOCAL need to track
                 if (chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
@@ -520,7 +519,6 @@ def main():
                     match_ap = cli_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
                                                    ap_list=ONLINE_APs)
                     if match_ap is None:
-                        send_ios_syslog(severity=l_DEBUG, message=f"why append cli_ap {cli_ap}")
                         # create a new object for checking and potentially appending
                         match_ap = copy.deepcopy(chk_ap)
                         ONLINE_APs.append(match_ap)
@@ -776,10 +774,19 @@ def main():
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(get_ap_cdp, sorted_ONLINE_APs)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
+
+    # sort again, allowing for repeated AP_NAME for AP_CDP_SWITCH_PORT_LOCAL
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
+
     def process_ap(chk_ap:AccessPoint=None):
         try:
             get_speed_duplex(chk_ap)
-            get_ap_cdp(chk_ap)
             get_ap_serial(chk_ap)
             get_tilt(chk_ap)
             do_ap_rename(chk_ap)

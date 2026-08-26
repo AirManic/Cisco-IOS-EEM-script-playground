@@ -10,6 +10,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/eem_AP_Rename/experimental/exp_eem_AP_Deploy.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/eem_AP_Rename/experimental/exp_eem_AP_Deploy_ONLINE_AP_LIST.csv">
           <value>
             <Attribute>
