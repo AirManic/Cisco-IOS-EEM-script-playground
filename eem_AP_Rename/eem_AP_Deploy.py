@@ -315,9 +315,15 @@ def get_ap_cdp(chk_ap=None):
     global cli_results
     global ONLINE_APs
     if chk_ap is None: return
-    cli_ap_cdp_neighbor = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
-    if not is_guestshell:
-        cli_ap_cdp_neighbor = cli_results['show_cdp_neighbor']
+    if is_guestshell:
+        if args_global.name is not None and args_global.name != "ALL":
+            # TODO fix sleep
+            send_ios_syslog(severity=l_INFO,
+                            message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information")
+            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
+        cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
+    else:
+        cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
     # clear and start a new objects
     cli_ap = AccessPoint()
     pattern = defaultdict(lambda : re.compile(rf'~'))
@@ -325,7 +331,7 @@ def get_ap_cdp(chk_ap=None):
     pattern['AP_CDP_SWITCH'] =    re.compile(rf"^Device ID\s+:\s+(\S+)\.")
     pattern['AP_INTERFACE'] =   re.compile(rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
-    for line in cli_ap_cdp_neighbor.splitlines():
+    for line in cli_results['show_cdp_neighbor'].splitlines():
         # find the line that matches this AP
         cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
         cli_match['AP_CDP_SWITCH'] = re.search(pattern['AP_CDP_SWITCH'], line)
@@ -409,8 +415,9 @@ def get_speed_duplex(chk_ap=None):
     global cli_results
     global ONLINE_APs
     if chk_ap is None: return
-    if is_guestshell and args_global.name is not None and args_global.name != "ALL":
-        cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
+    cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
+    if not is_guestshell:
+        cli_results['show_ap_ether_stats'] = fetch_file(file=SIM_FILE_EEM_AP_ETHER_STATS)
     # clear and start a new objects
     cli_ap = AccessPoint()
     pattern = defaultdict(lambda : re.compile(rf'~'))
@@ -512,6 +519,12 @@ def do_dual_5ghz(chk_ap=None):
     global ONLINE_APs
     global NEW_APs
     if chk_ap is None: return
+    cli_results['show_ap_config_slot'] = ""
+    for i in range(0, 4):
+        cli_results['show_ap_config_slot'] = cli_results['show_ap_config_slot'] + show_ap(
+            command=f"show ap name {args_global.name} config slot {i}")
+    if not is_guestshell:
+        cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
     # First look for a full match of all the criteria that is present
     # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
     criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
@@ -775,30 +788,12 @@ def main():
         for ap in NEW_APs:
             send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {ap['AP_NAME']} {ap}")
 
-    if is_guestshell:
-        # Retrieve the AP list from the WLC
-        if args_global.name is not None and args_global.name != "ALL":
-            cli_results['show_ap_summary'] = show_ap(command=f"show ap summary | inc {args_global.name}")
-            # TODO fix sleep
-            send_ios_syslog(severity=l_INFO, message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information" )
-            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
-            cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {args_global.name} cdp neighbor detail")
-            cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap name {args_global.name} ethernet statistics")
-            # for a single AP, have to loop thru the potential slots
-            cli_results['show_ap_config_slot'] = ""
-            for i in range(0, 4):
-                cli_results['show_ap_config_slot'] = cli_results['show_ap_config_slot'] + show_ap(command=f"show ap name {args_global.name} config slot {i}")
-        else:
-            cli_results['show_ap_summary'] = show_ap(command=f"show ap summary")
-            cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap cdp neighbor detail")
-            # TODO Remove
-            cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap ethernet statistics")
-            cli_results['show_ap_config_slot'] = show_ap(command=f"show ap config slot")
+    if args_global.name is not None and args_global.name != "ALL":
+        cli_results['show_ap_summary'] = show_ap(command=f"show ap summary | inc {args_global.name}")
     else:
+        cli_results['show_ap_summary'] = show_ap(command=f"show ap summary")
+    if not is_guestshell:
         cli_results['show_ap_summary'] = fetch_file(file=SIM_FILE_EEM_AP_SUMM)
-        cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
-        cli_results['show_ap_ether_stats'] = fetch_file(file=SIM_FILE_EEM_AP_ETHER_STATS)
-        cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
 
     # build list of online AP from show ap summary
     pattern = defaultdict(lambda : re.compile(rf'~'))
