@@ -464,8 +464,8 @@ def main():
             if cli_match['AP_SERIAL']:
                 chk_ap['AP_SERIAL'] = cli_match['AP_SERIAL'].group(1)
         if args.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                               f"is {chk_ap['AP_SERIAL']}")
+                                       message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                               f" is {chk_ap['AP_SERIAL']}")
 
     def get_tilt(chk_ap:AccessPoint=None):
         if chk_ap is None: return
@@ -534,9 +534,9 @@ def main():
                 cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = None
                 if args.debug:
                     send_ios_syslog(severity=l_DEBUG,
-                                    message=f"match_ap {match_ap['AP_NAME']} "
-                                            f"using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']} "
-                                            f"HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
+                                    message=f"match_ap {match_ap['AP_NAME']}"
+                                            f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
+                                            f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
                 # check to see if this has correct speed max
                 switch_port_speed_max = None
                 if match_ap['AP_CDP_SWITCH_PORT']:
@@ -552,12 +552,12 @@ def main():
                     if match_ap['AP_MODEL'].startswith('AIR-AP38'):  ap_speed_max = '5000'
                 expected_speed = None
                 if switch_port_speed_max and ap_speed_max:
-                    expected_speed = min(switch_port_speed_max, ap_speed_max)
+                    expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
                 if expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed:
-                    send_ios_syslog(severity=l_DEBUG,
-                                    message=f"ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']} "
-                                            f"check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} against expected {expected_speed} "
-                                            f"on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
+                    send_ios_syslog(severity=l_WARN,
+                                    message=f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
+                                            f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} against expected {expected_speed}"
+                                            f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
 
     def do_ap_rename(chk_ap:AccessPoint=None):
         if chk_ap is None: return
@@ -659,9 +659,10 @@ def main():
 
                     if cli_match['HIT'] and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                                f"Slot {cli_ap['AP_SLOT']} "
-                                                f"changing to dual-5GHz to Admin Enable as dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+                                        message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                                f" slot {cli_ap['AP_SLOT']}"
+                                                f" changing to dual-5GHz to admin enable per existing"
+                                                f" dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
 
                     # assume we have a longer summary, as this will work for short or long output then
@@ -697,9 +698,9 @@ def main():
                                             and cli_ap['AP_SLOT_ADMIN'])
                         if cli_match['HIT'] and args.debug:
                             send_ios_syslog(severity=l_DEBUG,
-                                            message=f"DUAL_5GHZ ONLINE {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                                    f"Slot {cli_ap['AP_SLOT']} "
-                                                    f"HIT admin {cli_ap['AP_SLOT_ADMIN']}")
+                                            message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                                    f" slot {cli_ap['AP_SLOT']}"
+                                                    f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
                             # update online_ap
                             chk_ap['AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
                         # no need to keep looking, so break the loop checking line
@@ -708,9 +709,9 @@ def main():
                     if (cli_match['HIT']
                             and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} "
-                                                f"Slot {cli_ap['AP_SLOT']} "
-                                                f"changing to dual-5GHz to Admin Enable as admin {cli_ap['AP_SLOT_ADMIN']}")
+                                        message=f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']}"
+                                                f" slot {cli_ap['AP_SLOT']}"
+                                                f" changing to dual-5GHz to admin enable per existing admin {cli_ap['AP_SLOT_ADMIN']}")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
 
                 elif match_ap['AP_MODEL'] == "CW9176D1":
@@ -755,9 +756,9 @@ def main():
                                   and cli_ap['AP_SLOT'] and cli_ap['AP_SLOT_ROLE'] and cli_ap['AP_SLOT_METHOD'] and cli_ap['AP_SLOT_BAND'])
                         if cli_match['HIT'] and args.debug:
                             send_ios_syslog(severity=l_DEBUG,
-                                            message=f"DUAL_5GHZ ONLINE {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                                    f"Slot {cli_ap['AP_SLOT']} "
-                                                    f"has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                                            message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                                    f" slot {cli_ap['AP_SLOT']}"
+                                                    f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
                         # no need to keep looking, so break the loop checking line
                         if cli_match['HIT']: break
 
@@ -766,26 +767,18 @@ def main():
 
                     if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                         send_ios_syslog(severity=l_INFO,
-                                        message=f"DUAL_5GHZ ONLINE {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                                f"Slot {cli_ap['AP_SLOT']} "
-                                                f"changing to enable dual-5GHz for role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                                        message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                                f" slot {cli_ap['AP_SLOT']}"
+                                                f" changing to enable dual-5GHz for existing"
+                                                f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
                         change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        # Start the load operations and mark each future with its URL
-        iterator = executor.map(get_ap_cdp, sorted_ONLINE_APs)
-        # Convert to list to force execution and wait until ALL are completed
-        results = list(iterator)
-
-    # sort again, allowing for repeated AP_NAME for AP_CDP_SWITCH_PORT_LOCAL
-    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
-
     def process_ap(chk_ap:AccessPoint=None):
         try:
+            get_ap_cdp(chk_ap)
             get_speed_duplex(chk_ap)
             get_ap_serial(chk_ap)
             get_tilt(chk_ap)
