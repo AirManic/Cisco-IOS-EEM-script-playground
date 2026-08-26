@@ -420,7 +420,6 @@ def get_speed_duplex(chk_ap=None):
     # clear and start a new objects
     cli_ap = AccessPoint()
     pattern = defaultdict(lambda : re.compile(rf'~'))
-    pattern['AP_NAME'] =            re.compile(rf"^(AP Name\s+:|Ethernet Stats for AP)\s+(\S+)")
     pattern['AP_NAME'] =            re.compile(rf"^(?:AP Name\s+:|Ethernet Stats for AP)\s+(\S+)")
     # Ethernet Stats for AP BLAH
     pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
