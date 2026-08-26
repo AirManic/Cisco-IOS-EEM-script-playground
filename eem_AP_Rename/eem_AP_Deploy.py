@@ -794,6 +794,7 @@ def main():
             do_dual_5ghz(chk_ap)
         except Exception:
             pass
+            passp
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Start the load operations and mark each future with its URL
