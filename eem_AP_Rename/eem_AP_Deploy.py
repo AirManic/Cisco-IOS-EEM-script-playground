@@ -183,9 +183,10 @@ def send_ios_syslog(message:str=None, severity:int=l_INFO):
                     if is_guestshell:
                         # IOS-XE syslogd will limit to one message a sec, drops faster
                         time.sleep( 1 - (time.time() - send_ios_syslog_last_msg_time) )
-                        send_ios_syslog_last_msg_time = time.time()
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
+                    send_ios_syslog_last_msg_time = time.time()
+
             else:
                 sev_string = {
                     l_DEBUG : "DEBUG",
