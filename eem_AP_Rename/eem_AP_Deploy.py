@@ -154,12 +154,20 @@ l_WARN   = 4
 l_ERR    = 3
 l_CRIT   = 2
 
+args_global = argparse.Namespace()
+args_global.verbose = False
+
 run_string = ''.join(random.choices(string.digits, k=5))
-def send_ios_syslog(message:str=None, severity:int=l_INFO):
+def send_ios_syslog(message:str=None, severity:int=l_INFO, verbose:bool=False):
+    global args
     global run_string
     try:
         for line in message.splitlines():
-            log_string = f"{my_name} line {inspect.stack()[1][2]:>3} {inspect.stack()[1][3]}() RandRunID {run_string} {line}"
+            stack_msg = ""
+
+            if args_global.verbose or verbose:
+                stack_msg = f"{my_name} line {inspect.stack()[1][2]:>3} {inspect.stack()[1][3]}() RandRunID {run_string} "
+            log_string = f"{stack_msg}{line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
                 log_string = f"[a123b234,1,{severity}]{log_string}\n"
@@ -205,7 +213,8 @@ def change_ap(command:Union[str,list]=None):
     if args.Xchange: cripple = f"! Xchange crippled "
     command_seq = ""
     for cmd in command_loop:
-        command_seq = command_seq + (f"{cripple}{cmd} ; ")
+        if command_seq != "": command_seq += ";"
+        command_seq = command_seq + (f"{cripple}{cmd}")
     send_ios_syslog(severity=l_INFO, message=f"sending cli('{command_seq}')")
     results = cli(command)
     return results
@@ -299,7 +308,7 @@ class AccessPoint(defaultdict):
         return match_ap
 
 
-args = defaultdict(str)
+args = argparse.Namespace
 def main():
 
     # make args global so we can use outside this scope
@@ -318,12 +327,14 @@ def main():
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
                         help=f"check only this specific AP name")
-    parser.add_argument('-a', '--accel', required=False, action='store_true',
-                        help=f"print accelerometer for each AP")
     parser.add_argument('-S', '--speed', required=False, action='store_true',
                         help=f"print speed & duplex for each AP")
+    parser.add_argument('-a', '--accel', required=False, action='store_true',
+                        help=f"print accelerometer for each AP")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
+    parser.add_argument('-v', '--verbose', required=False, action='store_true',
+                        help=f"print verbose syslog message details")
     parser.add_argument('-X', '--Xchange', required=False, action='store_true',
                         help=f"don't actually make change")
     args, args_unknown = parser.parse_known_args()
@@ -369,7 +380,7 @@ def main():
             cli_results['show_ap_summary'] = show_ap(command=f"show ap summary")
             cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap cdp neighbor detail")
             # TODO Remove
-            # cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap ethernet statistics")
+            cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap ethernet statistics")
             cli_results['show_ap_config_slot'] = show_ap(command=f"show ap config slot")
     else:
         cli_results['show_ap_summary'] = fetch_file(file=SIM_FILE_EEM_AP_SUMM)
@@ -489,16 +500,20 @@ def main():
 
     def get_speed_duplex(chk_ap=None):
         if chk_ap is None: return
-        cli_ap_ether_stats = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
-        if not is_guestshell:
-            cli_ap_ether_stats = cli_results['show_ap_ether_stats']
+        # TODO remove
+        # if args.name is not None and args.name != "ALL":
+        #     cli_ap_ether_stats = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
+        if is_guestshell and args.name is not None and args.name != "ALL":
+        #     cli_ap_ether_stats = cli_results['show_ap_ether_stats']
+            cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
+
         # clear and start a new objects
         cli_ap = AccessPoint()
         pattern = defaultdict(lambda : re.compile(rf'~'))
         pattern['AP_NAME'] =            re.compile(rf"^AP Name\s+:\s+(\S+)")
         pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
         cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
-        for line in cli_ap_ether_stats.splitlines():
+        for line in cli_results['show_ap_ether_stats'].splitlines():
             # find the line that matches this AP
             cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
             cli_match['AP_SPEED_DUPLEX'] = re.search(pattern['AP_SPEED_DUPLEX'], line)
@@ -831,6 +846,6 @@ def main():
 
 
 if __name__ == "__main__":
-    send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
+    send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}", verbose=True)
     main()
-    send_ios_syslog(severity=l_INFO, message=f"Finished ... {sys.argv}")
+    send_ios_syslog(severity=l_INFO, message=f"Finished ... {sys.argv}", verbose=True)
