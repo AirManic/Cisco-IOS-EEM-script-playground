@@ -788,10 +788,10 @@ def main():
         try:
             get_ap_serial(chk_ap)
             get_ap_cdp(chk_ap)
+            do_ap_rename(chk_ap)
             get_speed_duplex(chk_ap)
             get_tilt(chk_ap)
             do_dual_5ghz(chk_ap)
-            do_ap_rename(chk_ap)
         except Exception:
             pass
 
