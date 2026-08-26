@@ -490,7 +490,7 @@ def get_speed_duplex(chk_ap=None):
             if expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed:
                 send_ios_syslog(severity=l_WARN,
                                 message=f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
-                                        f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} against expected {expected_speed}"
+                                        f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} Mbps against expected {expected_speed} Mbps"
                                         f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
 
 def do_ap_rename(chk_ap=None):
