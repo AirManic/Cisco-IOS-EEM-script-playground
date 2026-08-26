@@ -315,14 +315,13 @@ def get_ap_cdp(chk_ap=None):
     global cli_results
     global ONLINE_APs
     if chk_ap is None: return
-    if is_guestshell:
-        if args_global.name is not None and args_global.name != "ALL":
-            # TODO fix sleep
-            send_ios_syslog(severity=l_INFO,
-                            message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information")
-            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
-        cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
-    else:
+    if args_global.name is not None and args_global.name != "ALL":
+        # TODO fix sleep
+        send_ios_syslog(severity=l_INFO,
+                        message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information")
+        time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
+    cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
+    if not is_guestshell:
         cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
     # clear and start a new objects
     cli_ap = AccessPoint()
@@ -421,7 +420,8 @@ def get_speed_duplex(chk_ap=None):
     # clear and start a new objects
     cli_ap = AccessPoint()
     pattern = defaultdict(lambda : re.compile(rf'~'))
-    pattern['AP_NAME'] =            re.compile(rf"^AP Name\s+:\s+(\S+)")
+    pattern['AP_NAME'] =            re.compile(rf"^(AP Name\s+:|Ethernet Stats for AP)\s+(\S+)")
+    # Ethernet Stats for AP BLAH
     pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_ap_ether_stats'].splitlines():
