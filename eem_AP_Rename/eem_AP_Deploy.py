@@ -162,14 +162,14 @@ ONLINE_APs = []
 NEW_APs = []
 
 run_string = ''.join(random.choices(string.digits, k=5))
-def send_ios_syslog(message:str=None, severity:int=l_INFO, verbose:bool=False):
+def send_ios_syslog(message:str=None, severity:int=l_INFO):
     global args_global
     global run_string
     try:
         for line in message.splitlines():
             stack_msg = ""
 
-            if args_global.verbose or verbose:
+            if args_global.verbose:
                 stack_msg = f"{my_name}@{inspect.stack()[1][2]:>3} {inspect.stack()[1][3]}() RR{run_string} "
             log_string = f"{stack_msg}{line}"
             if is_guestshell:
