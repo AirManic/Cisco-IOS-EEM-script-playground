@@ -162,9 +162,11 @@ ONLINE_APs = []
 NEW_APs = []
 
 run_string = ''.join(random.choices(string.digits, k=5))
+send_ios_syslog_last_msg_time = time.time()
 def send_ios_syslog(message:str=None, severity:int=l_INFO):
     global args_global
     global run_string
+    global send_ios_syslog_last_msg_time
     try:
         for line in message.splitlines():
             stack_msg = ""
@@ -177,10 +179,12 @@ def send_ios_syslog(message:str=None, severity:int=l_INFO):
                 log_string = f"[a123b234,1,{severity}]{log_string}\n"
                 # Open the specific IOx serial pipe
                 with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
+                    # move faster and drop a few messages if just debugging
+                    if is_guestshell:
+                        time.sleep( 1 - (time.time() - send_ios_syslog_last_msg_time) ) # IOS-XE syslogd will limit to one message a sec, drops faster
+                        send_ios_syslog_last_msg_time = time.time()
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
-                    # move faster and drop a few messages if just debugging
-                    time.sleep(1.001)  # IOS-XE syslogd will limit to one message a sec, drops faster
             else:
                 sev_string = {
                     l_DEBUG : "DEBUG",
