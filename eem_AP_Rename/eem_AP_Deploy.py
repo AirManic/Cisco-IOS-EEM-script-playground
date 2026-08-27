@@ -232,12 +232,11 @@ def change_ap(command:Union[str,list]=None):
     return results
 
 def fetch_file(file:str=None):
-    results = None
+    results = ''
     if Path(file).is_file():
         with open(file) as f:
             results = f.read()
     else:
-        results = ''
         print(f"{file} not found.")
     return results
 
