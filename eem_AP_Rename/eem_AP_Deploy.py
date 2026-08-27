@@ -182,7 +182,9 @@ def send_ios_syslog(message:str=None, severity:int=l_INFO):
                     # move faster and drop a few messages if just debugging
                     if is_guestshell:
                         # IOS-XE syslogd will limit to one message a sec, drops faster
-                        time.sleep( 1 - (time.time() - send_ios_syslog_last_msg_time) )
+                        delta_time = time.time() - send_ios_syslog_last_msg_time
+                        if delta_time < 1:
+                            time.sleep( 1 - delta_time )
                     syslog_pipe.write(log_string)
                     syslog_pipe.flush()
                     send_ios_syslog_last_msg_time = time.time()
@@ -325,7 +327,8 @@ def get_ap_cdp(chk_ap=None):
         # TODO fix sleep
         send_ios_syslog(severity=l_INFO,
                         message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information")
-        time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
+        if is_guestshell:
+            time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
     cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
     if not is_guestshell:
         cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
@@ -543,7 +546,7 @@ def do_dual_5ghz(chk_ap=None):
                                        message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
                                                f"HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
 
-        # TODO always collect.. also deal with explicit Disabled
+        # TODO deal with explicit Disabled
         if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1']:
             # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
             if args_global.debug: send_ios_syslog(severity=l_DEBUG,
