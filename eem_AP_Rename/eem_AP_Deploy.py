@@ -678,6 +678,7 @@ def do_dual_5ghz(chk_ap=None):
                 pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(.*)")
                 pattern['AP_SLOT_METHOD'] = re.compile(rf"^\s+Assignment Method\s+:\s+(.*)")
                 pattern['AP_SLOT_BAND'] = re.compile(rf"^\s+Band\s+:\s+(\S+\s+GHz)")
+                pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
                     # find the respective patterns
@@ -704,12 +705,17 @@ def do_dual_5ghz(chk_ap=None):
                             and cli_ap['AP_SLOT_BAND'] is None
                             and cli_match['AP_SLOT_BAND']):
                         cli_ap['AP_SLOT_BAND'] = cli_match['AP_SLOT_BAND'].group(1)
+                    if (cli_ap['AP_SLOT']
+                            and cli_ap['AP_SLOT_ADMIN'] is None
+                            and cli_match['AP_SLOT_ADMIN']):
+                        cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
 
                     cli_match['HIT'] = (cli_ap['AP_NAME']
                                         and cli_ap['AP_SLOT']
                                         and cli_ap['AP_SLOT_ROLE']
                                         and cli_ap['AP_SLOT_METHOD']
-                                        and cli_ap['AP_SLOT_BAND'])
+                                        and cli_ap['AP_SLOT_BAND']
+                                        and cli_ap['AP_SLOT_ADMIN'])
                     if cli_match['HIT'] and args_global.debug:
                         send_ios_syslog(severity=l_DEBUG,
                                         message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
@@ -718,7 +724,7 @@ def do_dual_5ghz(chk_ap=None):
                     # no need to keep looking, so break the loop checking line
                     if cli_match['HIT']:
                         # update chk_ap
-                        chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']}"
+                        chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']} admin {cli_ap['AP_SLOT_ADMIN']}"
                         break
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
