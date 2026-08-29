@@ -564,14 +564,11 @@ def do_dual_5ghz(chk_ap=None):
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
-                    # find the line that matches this AP
-                    cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
-                    cli_match['AP_SLOT'] = re.search(pattern['AP_SLOT'], line)
-                    cli_match['AP_SLOT_DUAL_ROLE'] = re.search(pattern['AP_SLOT_DUAL_ROLE'], line)
-                    cli_match['AP_SLOT_ADMIN'] = re.search(pattern['AP_SLOT_ADMIN'], line)
+                    # find the respective patterns
+                    for p in pattern:
+                        cli_match[p] = re.search(pattern[p],line)
                     if (cli_ap['AP_NAME'] is None
-                        and cli_match['AP_NAME']
-                        and cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']):
+                        and cli_match['AP_NAME']):
                         # clear and start a new cli_ap object
                         cli_ap = AccessPoint()
                         cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
@@ -601,8 +598,8 @@ def do_dual_5ghz(chk_ap=None):
 
                     # no need to keep looking, so break the loop checking line
                     if cli_match['HIT']:
-                        # update online_ap
-                        chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} mode {cli_ap['AP_SLOT_DUAL_ROLE']}"
+                        # update chk_ap
+                        chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} dual_radio {cli_ap['AP_SLOT_DUAL_ROLE']} admin {cli_ap['AP_SLOT_ADMIN']}"
                         break
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
@@ -627,18 +624,16 @@ def do_dual_5ghz(chk_ap=None):
                 # clear and start a new objects
                 cli_ap = AccessPoint()
                 pattern = defaultdict(lambda : re.compile(rf'~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+({chk_ap['AP_NAME']})")
                 pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
-                    # find the line that matches this AP
-                    cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
-                    cli_match['AP_SLOT'] = re.search(pattern['AP_SLOT'], line)
-                    cli_match['AP_SLOT_ADMIN'] = re.search(pattern['AP_SLOT_ADMIN'], line)
+                    # find the respective patterns
+                    for p in pattern:
+                        cli_match[p] = re.search(pattern[p],line)
                     if (cli_ap['AP_NAME'] is None
-                        and cli_match['AP_NAME']
-                        and cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']):
+                        and cli_match['AP_NAME']):
                         # clear and start a new cli_ap object
                         cli_ap = AccessPoint()
                         cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
@@ -661,9 +656,8 @@ def do_dual_5ghz(chk_ap=None):
 
                     # no need to keep looking, so break the loop checking line
                     if cli_match['HIT']:
-                        # update online_ap
-                        chk_ap[
-                            'AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                        # update chk_ap
+                        chk_ap['AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
                         break
 
                 if (cli_match['HIT']
@@ -679,21 +673,20 @@ def do_dual_5ghz(chk_ap=None):
                 # clear and start a new objects
                 cli_ap = AccessPoint()
                 pattern = defaultdict(lambda : re.compile(rf'~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+({chk_ap['AP_NAME']})")
                 pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (0)")
                 pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(.*)")
                 pattern['AP_SLOT_METHOD'] = re.compile(rf"^\s+Assignment Method\s+:\s+(.*)")
                 pattern['AP_SLOT_BAND'] = re.compile(rf"^\s+Band\s+:\s+(\S+\s+GHz)")
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
-                    # find the line that matches this AP
-                    cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
-                    cli_match['AP_SLOT'] = re.search(pattern['AP_SLOT'], line)
-                    cli_match['AP_SLOT_ROLE'] = re.search(pattern['AP_SLOT_ROLE'], line)
-                    cli_match['AP_SLOT_METHOD'] = re.search(pattern['AP_SLOT_METHOD'], line)
-                    cli_match['AP_SLOT_BAND'] = re.search(pattern['AP_SLOT_BAND'], line)
+                    # find the respective patterns
+                    for p in pattern:
+                        cli_match[p] = re.search(pattern[p],line)
                     if (cli_ap['AP_NAME'] is None
                         and cli_match['AP_NAME']):
+                        # clear and start a new cli_ap object
+                        cli_ap = AccessPoint()
                         cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
                     if (cli_ap['AP_NAME']
                             and cli_ap['AP_SLOT'] is None
@@ -712,18 +705,21 @@ def do_dual_5ghz(chk_ap=None):
                             and cli_match['AP_SLOT_BAND']):
                         cli_ap['AP_SLOT_BAND'] = cli_match['AP_SLOT_BAND'].group(1)
 
-                    cli_match['HIT'] = (cli_ap['AP_NAME'] == chk_ap['AP_NAME']
-                              and cli_ap['AP_SLOT'] and cli_ap['AP_SLOT_ROLE'] and cli_ap['AP_SLOT_METHOD'] and cli_ap['AP_SLOT_BAND'])
+                    cli_match['HIT'] = (cli_ap['AP_NAME']
+                                        and cli_ap['AP_SLOT']
+                                        and cli_ap['AP_SLOT_ROLE']
+                                        and cli_ap['AP_SLOT_METHOD']
+                                        and cli_ap['AP_SLOT_BAND'])
                     if cli_match['HIT'] and args_global.debug:
                         send_ios_syslog(severity=l_DEBUG,
                                         message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
                                                 f" slot {cli_ap['AP_SLOT']}"
                                                 f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
                     # no need to keep looking, so break the loop checking line
-                    if cli_match['HIT']: break
-
-                # update online_ap
-                chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']}"
+                    if cli_match['HIT']:
+                        # update chk_ap
+                        chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']}"
+                        break
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                     send_ios_syslog(severity=l_INFO,
