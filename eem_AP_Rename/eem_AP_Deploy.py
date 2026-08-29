@@ -530,8 +530,8 @@ def do_dual_5ghz(chk_ap=None):
     if chk_ap is None: return
     cli_results['show_ap_config_slot'] = ""
     for i in range(0, 4):
-        cli_results['show_ap_config_slot'] = cli_results['show_ap_config_slot'] + show_ap(
-            command=f"show ap name {args_global.name} config slot {i}")
+        cli_results['show_ap_config_slot'] = (cli_results['show_ap_config_slot']
+                    + show_ap(command=f"show ap name {args_global.name} config slot {i}"))
     if not is_guestshell:
         cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
     # First look for a full match of all the criteria that is present
@@ -598,10 +598,12 @@ def do_dual_5ghz(chk_ap=None):
                                         message=f"match_ap {match_ap['AP_NAME']}"
                                                 f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
                                                 f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
+
+                    # no need to keep looking, so break the loop checking line
+                    if cli_match['HIT']:
                         # update online_ap
                         chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} mode {cli_ap['AP_SLOT_DUAL_ROLE']}"
-                    # no need to keep looking, so break the loop checking line
-                    if cli_match['HIT']: break
+                        break
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
                     send_ios_syslog(severity=l_INFO,
@@ -656,10 +658,13 @@ def do_dual_5ghz(chk_ap=None):
                                         message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
                                                 f" slot {cli_ap['AP_SLOT']}"
                                                 f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
-                        # update online_ap
-                        chk_ap['AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
+
                     # no need to keep looking, so break the loop checking line
-                    if cli_match['HIT']: break
+                    if cli_match['HIT']:
+                        # update online_ap
+                        chk_ap[
+                            'AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                        break
 
                 if (cli_match['HIT']
                         and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
