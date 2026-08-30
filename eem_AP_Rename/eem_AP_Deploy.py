@@ -99,6 +99,7 @@ guestshell enable
 !
 """
 
+from iosxe_guestshell_logging import configure_guestshell_logging
 import argparse
 import os
 from pathlib import Path
@@ -146,6 +147,17 @@ else:
     SIM_FILE_EEM_AP_CONF = f"./exp_eem_AP_config_general.txt"
     SIM_FILE_EEM_AP_CDP_DETAIL = f"./experimental/exp_eem_AP_CDP_neighbors_detail.txt"
     SIM_FILE_EEM_AP_CONFIG_SLOT = f"./experimental/exp_eem_AP_config_slot.txt"
+
+
+logger = configure_guestshell_logging(__name__)
+
+logger.critical("GuestShell example: Critical message (level 2)")
+logger.error("GuestShell example: Error message (level 3)")
+logger.warning("GuestShell example: Warning message (level 4)")
+logger.notice("GuestShell example: Notice message (level 5)")
+logger.info("GuestShell example: Info message (level 6)")
+logger.debug("GuestShell example: Debug message (level 7)")
+
 
 l_DEBUG  = 7
 l_INFO   = 6
