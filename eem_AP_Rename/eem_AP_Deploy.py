@@ -304,10 +304,7 @@ def get_ap_cdp(chk_ap=None):
     pattern['AP_INTERFACE'] =   re.compile(rf"^Interface\s+:\s+(\S+),.*:\s+(\S+)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_cdp_neighbor'].splitlines():
-        # find the line that matches this AP
-        cli_match['AP_NAME'] = re.search(pattern['AP_NAME'], line)
-        cli_match['AP_CDP_SWITCH'] = re.search(pattern['AP_CDP_SWITCH'], line)
-        cli_match['AP_INTERFACE'] = re.search(pattern['AP_INTERFACE'], line)
+        for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if (cli_ap['AP_NAME'] is None
                 and cli_match['AP_NAME']
                 and chk_ap['AP_NAME'] == cli_match['AP_NAME'].group(1)):
@@ -359,7 +356,7 @@ def get_ap_serial(chk_ap=None):
     pattern['AP_SERIAL'] = re.compile(rf"^PID:.*SN:\s+(\S+)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_ap_serial_detail.splitlines():
-        cli_match['AP_SERIAL'] = re.search(pattern['AP_SERIAL'], line)
+        for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_SERIAL']:
             chk_ap['AP_SERIAL'] = cli_match['AP_SERIAL'].group(1)
     if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
@@ -376,7 +373,7 @@ def get_tilt(chk_ap=None):
     pattern['AP_TILT'] = re.compile(rf"^Tilt angle\s+:\s+(.*)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_ap_tile_detail.splitlines():
-        cli_match['AP_TILT'] = re.search(pattern['AP_TILT'], line)
+        for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_TILT']:
             chk_ap['AP_TILT'] = cli_match['AP_TILT'].group(1)
     if args_global.accel: logger.debug(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
@@ -395,9 +392,7 @@ def get_speed_duplex(chk_ap=None):
     pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_ap_ether_stats'].splitlines():
-        # find the respective patterns
-        for p in pattern:
-            cli_match[p] = re.search(pattern[p], line)
+        for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_NAME']:
             # clear start a new cli_ap object
             cli_ap = AccessPoint()
@@ -517,9 +512,7 @@ def do_dual_5ghz(chk_ap=None):
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
-                    # find the respective patterns
-                    for p in pattern:
-                        cli_match[p] = re.search(pattern[p],line)
+                    for p in pattern: cli_match[p] = re.search(pattern[p], line)
                     if (cli_ap['AP_NAME'] is None
                         and cli_match['AP_NAME']):
                         # clear and start a new cli_ap object
@@ -579,9 +572,7 @@ def do_dual_5ghz(chk_ap=None):
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
-                    # find the respective patterns
-                    for p in pattern:
-                        cli_match[p] = re.search(pattern[p],line)
+                    for p in pattern: cli_match[p] = re.search(pattern[p], line)
                     if (cli_ap['AP_NAME'] is None
                         and cli_match['AP_NAME']):
                         # clear and start a new cli_ap object
@@ -621,7 +612,7 @@ def do_dual_5ghz(chk_ap=None):
                 # clear and start a new objects
                 cli_ap = AccessPoint()
                 pattern = defaultdict(lambda : re.compile(rf'~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+({chk_ap['AP_NAME']})")
+                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                 pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (0)")
                 pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(.*)")
                 pattern['AP_SLOT_METHOD'] = re.compile(rf"^\s+Assignment Method\s+:\s+(.*)")
@@ -629,11 +620,10 @@ def do_dual_5ghz(chk_ap=None):
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
-                    # find the respective patterns
-                    for p in pattern:
-                        cli_match[p] = re.search(pattern[p],line)
+                    for p in pattern: cli_match[p] = re.search(pattern[p], line)
                     if (cli_ap['AP_NAME'] is None
-                        and cli_match['AP_NAME']):
+                        and cli_match['AP_NAME']
+                        and cli_match['AP_NAME'] == chk_ap['AP_NAME']):
                         # clear and start a new cli_ap object
                         cli_ap = AccessPoint()
                         cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
@@ -760,11 +750,9 @@ def main():
     pattern['AP_SUMMARY'] = re.compile(rf"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(Registered)\s+(.*)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_ap_summary'].splitlines():
-        # clear and start a new objects
-        online_ap = AccessPoint()
-        cli_match['AP_SUMMARY'] = re.search(pattern['AP_SUMMARY'], line)
-        # clear and start a new cli_ap object
+        for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_SUMMARY']:
+            online_ap = AccessPoint()
             online_ap['AP_NAME'] = cli_match['AP_SUMMARY'].group(1)
             online_ap['AP_MODEL'] = cli_match['AP_SUMMARY'].group(3)
             online_ap['AP_MAC_ENET'] = cli_match['AP_SUMMARY'].group(4)
