@@ -305,17 +305,15 @@ def get_ap_cdp(chk_ap=None):
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_cdp_neighbor'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
-        if (cli_ap['AP_NAME'] is None
-                and cli_match['AP_NAME']
-                and chk_ap['AP_NAME'] == cli_match['AP_NAME'].group(1)):
-            # clear and start a new cli_ap object
+        if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
             cli_ap = AccessPoint()
-            cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+            if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
+                cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
         if (cli_ap['AP_NAME']
                 and cli_ap['AP_CDP_SWITCH'] is None
                 and cli_match['AP_CDP_SWITCH']):
             cli_ap['AP_CDP_SWITCH'] = cli_match['AP_CDP_SWITCH'].group(1).split(".")[0]
-        if (cli_ap['AP_CDP_SWITCH']
+        if (cli_ap['AP_NAME']
                 and cli_ap['AP_CDP_SWITCH_PORT'] is None
                 and cli_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
                 and cli_match['AP_INTERFACE']):
@@ -485,6 +483,12 @@ def do_dual_5ghz(chk_ap=None):
                     + show_ap(command=f"show ap name {args_global.name} config slot {i}"))
     if not is_guestshell:
         cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
+
+    chk_ap['AP_DUAL_5GHZ'] = f"TBD"
+
+    if chk_ap['AP_MODEL'] in ['CW9179F']:
+        chk_ap['AP_DUAL_5GHZ'] = f"NA"
+
     # First look for a full match of all the criteria that is present
     # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
     criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
@@ -497,27 +501,23 @@ def do_dual_5ghz(chk_ap=None):
 
         # TODO deal with explicit Disabled
         if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1']:
-            # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
-            if args_global.debug: logger.debug(f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
-                                               f" checking status")
             if match_ap['AP_MODEL'] == "CW9178I":
                 # assume we have a longer summary, as this will work for short or long output then
                 # Check Slot 1 first
                 # clear and start a new objects
                 cli_ap = AccessPoint()
                 pattern = defaultdict(lambda: re.compile('~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+({chk_ap['AP_NAME']})")
+                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                 pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (1)")
                 pattern['AP_SLOT_DUAL_ROLE'] = re.compile(rf"^\s+Dual Radio Mode\s+:\s+(.*)")
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
                     for p in pattern: cli_match[p] = re.search(pattern[p], line)
-                    if (cli_ap['AP_NAME'] is None
-                        and cli_match['AP_NAME']):
-                        # clear and start a new cli_ap object
+                    if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
                         cli_ap = AccessPoint()
-                        cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                        if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
+                            cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
                     if (cli_ap['AP_NAME']
                             and cli_ap['AP_SLOT'] is None
                             and cli_match['AP_SLOT']):
@@ -567,17 +567,16 @@ def do_dual_5ghz(chk_ap=None):
                 # clear and start a new objects
                 cli_ap = AccessPoint()
                 pattern = defaultdict(lambda : re.compile(rf'~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+({chk_ap['AP_NAME']})")
+                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
                 pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
                 pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
                     for p in pattern: cli_match[p] = re.search(pattern[p], line)
-                    if (cli_ap['AP_NAME'] is None
-                        and cli_match['AP_NAME']):
-                        # clear and start a new cli_ap object
+                    if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
                         cli_ap = AccessPoint()
-                        cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                        if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
+                            cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
                     if (cli_ap['AP_NAME']
                             and cli_ap['AP_SLOT'] is None
                             and cli_match['AP_SLOT']):
@@ -621,31 +620,24 @@ def do_dual_5ghz(chk_ap=None):
                 cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
                 for line in cli_results['show_ap_config_slot'].splitlines():
                     for p in pattern: cli_match[p] = re.search(pattern[p], line)
-                    if (cli_ap['AP_NAME'] is None
-                        and cli_match['AP_NAME']
-                        and cli_match['AP_NAME'] == chk_ap['AP_NAME']):
-                        # clear and start a new cli_ap object
+                    if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
                         cli_ap = AccessPoint()
-                        cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                        if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
+                            cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
                     if (cli_ap['AP_NAME']
-                            and cli_ap['AP_SLOT'] is None
-                            and cli_match['AP_SLOT']):
+                        and cli_ap['AP_SLOT'] is None and cli_match['AP_SLOT']):
                         cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
-                    if (cli_ap['AP_SLOT']
-                            and cli_ap['AP_SLOT_ROLE'] is None
-                            and cli_match['AP_SLOT_ROLE']):
+                    if (cli_ap['AP_NAME']
+                        and cli_ap['AP_SLOT_ROLE'] is None and cli_match['AP_SLOT_ROLE']):
                         cli_ap['AP_SLOT_ROLE'] = cli_match['AP_SLOT_ROLE'].group(1)
-                    if (cli_ap['AP_SLOT_ROLE']
-                            and cli_ap['AP_SLOT_METHOD'] is None
-                            and cli_match['AP_SLOT_METHOD']):
+                    if (cli_ap['AP_NAME']
+                            and cli_ap['AP_SLOT_METHOD'] is None and cli_match['AP_SLOT_METHOD']):
                         cli_ap['AP_SLOT_METHOD'] = cli_match['AP_SLOT_METHOD'].group(1)
-                    if (cli_ap['AP_SLOT_METHOD']
-                            and cli_ap['AP_SLOT_BAND'] is None
-                            and cli_match['AP_SLOT_BAND']):
+                    if (cli_ap['AP_NAME']
+                            and cli_ap['AP_SLOT_BAND'] is None and cli_match['AP_SLOT_BAND']):
                         cli_ap['AP_SLOT_BAND'] = cli_match['AP_SLOT_BAND'].group(1)
-                    if (cli_ap['AP_SLOT']
-                            and cli_ap['AP_SLOT_ADMIN'] is None
-                            and cli_match['AP_SLOT_ADMIN']):
+                    if (cli_ap['AP_NAME']
+                            and cli_ap['AP_SLOT_ADMIN'] is None and cli_match['AP_SLOT_ADMIN']):
                         cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
 
                     cli_match['HIT'] = (cli_ap['AP_NAME']
@@ -677,9 +669,6 @@ def do_dual_5ghz(chk_ap=None):
 def process_ap(chk_ap=None):
     try:
         get_ap_serial(chk_ap)
-        get_ap_cdp(chk_ap)
-        do_ap_rename(chk_ap)
-        get_speed_duplex(chk_ap)
         get_tilt(chk_ap)
         do_dual_5ghz(chk_ap)
     except Exception:
@@ -762,10 +751,44 @@ def main():
 
     # Sort them for added sanity to process loops in a way most humans think
     sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Start the load operations and mark each future with its URL
-        iterator = executor.map(process_ap, sorted_ONLINE_APs, timeout=6000)
+        iterator = executor.map(get_ap_cdp, sorted_ONLINE_APs, timeout=6000)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
+
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(get_speed_duplex, sorted_ONLINE_APs, timeout=6000)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
+
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(get_ap_serial, sorted_ONLINE_APs, timeout=6000)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
+
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(get_tilt, sorted_ONLINE_APs, timeout=6000)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
+
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(do_dual_5ghz, sorted_ONLINE_APs, timeout=6000)
+        # Convert to list to force execution and wait until ALL are completed
+        results = list(iterator)
+
+    sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # Start the load operations and mark each future with its URL
+        iterator = executor.map(do_ap_rename, sorted_ONLINE_APs, timeout=6000)
         # Convert to list to force execution and wait until ALL are completed
         results = list(iterator)
 
