@@ -165,47 +165,6 @@ cli_results = defaultdict(str)
 ONLINE_APs = []
 NEW_APs = []
 
-RRID = ''.join(random.choices(string.digits, k=5))
-send_ios_syslog_last_msg_time = time.time()
-def send_ios_syslog(message:str=None, severity:int=l_INFO):
-    global args_global
-    global RRID
-    global send_ios_syslog_last_msg_time
-    try:
-        for line in message.splitlines():
-            stack_msg = ""
-
-            if args_global.verbose:
-                stack_msg = f"{my_name}@{inspect.stack()[1][2]:>3} {inspect.stack()[1][3]}() RR{RRID} "
-            log_string = f"{stack_msg}{line}"
-            if is_guestshell:
-                # Construct the standard Cisco log prefix
-                log_string = f"[a123b234,1,{severity}]{log_string}\n"
-                # Open the specific IOx serial pipe
-                with open("/dev/ttyS2", "w", encoding="utf-8") as syslog_pipe:
-                    # move faster and drop a few messages if just debugging
-                    if is_guestshell:
-                        # IOS-XE syslogd will limit to one message a sec, drops faster
-                        delta_time = time.time() - send_ios_syslog_last_msg_time
-                        if delta_time < 1:
-                            time.sleep( 1 - delta_time )
-                    syslog_pipe.write(log_string)
-                    syslog_pipe.flush()
-                    send_ios_syslog_last_msg_time = time.time()
-
-            else:
-                sev_string = {
-                    l_DEBUG : "DEBUG",
-                    l_INFO : "INFO",
-                    l_NOTICE : "NOTICE",
-                    l_WARN : "WARN",
-                    l_ERR : "ERR",
-                    l_CRIT : "CRIT"
-                }
-                print(f"{sev_string[severity]} {log_string}")
-    except FileNotFoundError:
-        print(f"Error: /dev/ttyS2 not found. Ensure this is executed inside IOS-XE iox guestshell.")
-
 def show_ap(command:Union[str,list]=None):
     command_loop = []
     if type(command) is str:
@@ -822,7 +781,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Start the load operations and mark each future with its URL
-        iterator = executor.map(process_ap, sorted_ONLINE_APs)
+        iterator = executor.map(process_ap, sorted_ONLINE_APs, timeout=120)
         # Convert to list to force execution and wait until ALL are completed
         results = list(iterator)
 
