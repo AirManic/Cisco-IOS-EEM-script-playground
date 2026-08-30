@@ -778,7 +778,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         # Start the load operations and mark each future with its URL
-        iterator = executor.map(process_ap, sorted_ONLINE_APs, timeout=120)
+        iterator = executor.map(process_ap, sorted_ONLINE_APs, timeout=6000)
         # Convert to list to force execution and wait until ALL are completed
         results = list(iterator)
 
