@@ -484,11 +484,6 @@ def do_dual_5ghz(chk_ap=None):
     if not is_guestshell:
         cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
 
-    chk_ap['AP_DUAL_5GHZ'] = f"TBD"
-
-    if chk_ap['AP_MODEL'] in ['CW9179F']:
-        chk_ap['AP_DUAL_5GHZ'] = f"NA"
-
     # First look for a full match of all the criteria that is present
     # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
     criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
@@ -500,113 +495,118 @@ def do_dual_5ghz(chk_ap=None):
                                            f"HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
 
         # TODO deal with explicit Disabled
-        if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1']:
-            if match_ap['AP_MODEL'] == "CW9178I":
-                # assume we have a longer summary, as this will work for short or long output then
-                # Check Slot 1 first
-                # clear and start a new objects
-                cli_ap = AccessPoint()
-                pattern = defaultdict(lambda: re.compile('~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
-                pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (1)")
-                pattern['AP_SLOT_DUAL_ROLE'] = re.compile(rf"^\s+Dual Radio Mode\s+:\s+(.*)")
-                pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
-                cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
-                for line in cli_results['show_ap_config_slot'].splitlines():
-                    for p in pattern: cli_match[p] = re.search(pattern[p], line)
-                    if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
-                        cli_ap = AccessPoint()
-                        if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
-                            cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-                    if (cli_ap['AP_NAME']
-                            and cli_ap['AP_SLOT'] is None
-                            and cli_match['AP_SLOT']):
-                        cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
-                    if (cli_ap['AP_SLOT']
-                            and cli_ap['AP_SLOT_DUAL_ROLE'] is None
-                            and cli_match['AP_SLOT_DUAL_ROLE']):
-                        cli_ap['AP_SLOT_DUAL_ROLE'] = cli_match['AP_SLOT_DUAL_ROLE'].group(1)
-                    if (cli_ap['AP_SLOT_DUAL_ROLE']
-                            and cli_ap['AP_SLOT_ADMIN'] is None
-                            and cli_match['AP_SLOT_ADMIN']):
-                        cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
 
-                    cli_match['HIT'] = (cli_ap['AP_NAME']
-                                        and cli_ap['AP_SLOT']
-                                        and cli_ap['AP_SLOT_DUAL_ROLE']
-                                        and cli_ap['AP_SLOT_ADMIN'])
+        chk_ap['AP_DUAL_5GHZ'] = f"TBD"
 
-                    if cli_match['HIT'] and args_global.debug:
-                        logger.debug(f"match_ap {match_ap['AP_NAME']}"
-                                     f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
-                                     f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
+        if chk_ap['AP_MODEL'] in ['CW9179F']:
+            chk_ap['AP_DUAL_5GHZ'] = f"NA"
 
-                    # no need to keep looking, so break the loop checking line
-                    if cli_match['HIT']:
-                        # update chk_ap
-                        chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} dual_radio {cli_ap['AP_SLOT_DUAL_ROLE']} admin {cli_ap['AP_SLOT_ADMIN']}"
-                        break
+        if match_ap['AP_MODEL'] in ['CW9178I']:
+            # assume we have a longer summary, as this will work for short or long output then
+            # Check Slot 1 first
+            # clear and start a new objects
+            cli_ap = AccessPoint()
+            pattern = defaultdict(lambda: re.compile('~'))
+            pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+            pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (1)")
+            pattern['AP_SLOT_DUAL_ROLE'] = re.compile(rf"^\s+Dual Radio Mode\s+:\s+(.*)")
+            pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
+            cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
+            for line in cli_results['show_ap_config_slot'].splitlines():
+                for p in pattern: cli_match[p] = re.search(pattern[p], line)
+                if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
+                    cli_ap = AccessPoint()
+                    if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
+                        cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                if (cli_ap['AP_NAME']
+                        and cli_ap['AP_SLOT'] is None
+                        and cli_match['AP_SLOT']):
+                    cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
+                if (cli_ap['AP_SLOT']
+                        and cli_ap['AP_SLOT_DUAL_ROLE'] is None
+                        and cli_match['AP_SLOT_DUAL_ROLE']):
+                    cli_ap['AP_SLOT_DUAL_ROLE'] = cli_match['AP_SLOT_DUAL_ROLE'].group(1)
+                if (cli_ap['AP_SLOT_DUAL_ROLE']
+                        and cli_ap['AP_SLOT_ADMIN'] is None
+                        and cli_match['AP_SLOT_ADMIN']):
+                    cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
 
-                if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
-                    logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                f" Slot {chk_ap['AP_SLOT']}"
-                                f" changing to dual_mode for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
-                    change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz slot 2 shutdown")
-                    change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz dual-radio mode enable")
-                    change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown")
+                cli_match['HIT'] = (cli_ap['AP_NAME']
+                                    and cli_ap['AP_SLOT']
+                                    and cli_ap['AP_SLOT_DUAL_ROLE']
+                                    and cli_ap['AP_SLOT_ADMIN'])
 
-                if cli_match['HIT'] and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
-                    logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                f" slot {cli_ap['AP_SLOT']}"
-                                f" changing to dual-5GHz to admin enable per existing"
-                                f" dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
-                    change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
+                if cli_match['HIT'] and args_global.debug:
+                    logger.debug(f"match_ap {match_ap['AP_NAME']}"
+                                 f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
+                                 f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
 
-                # assume we have a longer summary, as this will work for short or long output then
-                # Now check Slot 2
-                # clear and start a new objects
-                cli_ap = AccessPoint()
-                pattern = defaultdict(lambda : re.compile(rf'~'))
-                pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
-                pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
-                pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
-                cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
-                for line in cli_results['show_ap_config_slot'].splitlines():
-                    for p in pattern: cli_match[p] = re.search(pattern[p], line)
-                    if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
-                        cli_ap = AccessPoint()
-                        if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
-                            cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-                    if (cli_ap['AP_NAME']
-                            and cli_ap['AP_SLOT'] is None
-                            and cli_match['AP_SLOT']):
-                        cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
-                    if (cli_ap['AP_SLOT']
-                            and cli_ap['AP_SLOT_ADMIN'] is None
-                            and cli_match['AP_SLOT_ADMIN']):
-                        cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
-                    cli_match['HIT'] = (cli_ap['AP_NAME']
-                                        and cli_ap['AP_SLOT']
-                                        and cli_ap['AP_SLOT_ADMIN'])
-                    if cli_match['HIT'] and args_global.debug:
-                        logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                     f" slot {cli_ap['AP_SLOT']}"
-                                     f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
+                # no need to keep looking, so break the loop checking line
+                if cli_match['HIT']:
+                    # update chk_ap
+                    chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} dual_radio {cli_ap['AP_SLOT_DUAL_ROLE']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                    break
 
-                    # no need to keep looking, so break the loop checking line
-                    if cli_match['HIT']:
-                        # update chk_ap
-                        chk_ap['AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
-                        break
+            if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
+                logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                            f" Slot {chk_ap['AP_SLOT']}"
+                            f" changing to dual_mode for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz slot 2 shutdown")
+                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz dual-radio mode enable")
+                change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown")
 
-                if (cli_match['HIT']
-                        and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
-                    logger.info(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']}"
-                                f" slot {cli_ap['AP_SLOT']}"
-                                f" changing to dual-5GHz to admin enable per existing admin {cli_ap['AP_SLOT_ADMIN']}")
-                    change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
+            if cli_match['HIT'] and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
+                logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                            f" slot {cli_ap['AP_SLOT']}"
+                            f" changing to dual-5GHz to admin enable per existing"
+                            f" dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+                change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
 
-            elif match_ap['AP_MODEL'] == "CW9176D1":
+            # assume we have a longer summary, as this will work for short or long output then
+            # Now check Slot 2
+            # clear and start a new objects
+            cli_ap = AccessPoint()
+            pattern = defaultdict(lambda : re.compile(rf'~'))
+            pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(\S+)")
+            pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (2)")
+            pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(.*)")
+            cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+            for line in cli_results['show_ap_config_slot'].splitlines():
+                for p in pattern: cli_match[p] = re.search(pattern[p], line)
+                if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
+                    cli_ap = AccessPoint()
+                    if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
+                        cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                if (cli_ap['AP_NAME']
+                        and cli_ap['AP_SLOT'] is None
+                        and cli_match['AP_SLOT']):
+                    cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
+                if (cli_ap['AP_SLOT']
+                        and cli_ap['AP_SLOT_ADMIN'] is None
+                        and cli_match['AP_SLOT_ADMIN']):
+                    cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
+                cli_match['HIT'] = (cli_ap['AP_NAME']
+                                    and cli_ap['AP_SLOT']
+                                    and cli_ap['AP_SLOT_ADMIN'])
+                if cli_match['HIT'] and args_global.debug:
+                    logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                 f" slot {cli_ap['AP_SLOT']}"
+                                 f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
+
+                # no need to keep looking, so break the loop checking line
+                if cli_match['HIT']:
+                    # update chk_ap
+                    chk_ap['AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                    break
+
+            if (cli_match['HIT']
+                    and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
+                logger.info(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']}"
+                            f" slot {cli_ap['AP_SLOT']}"
+                            f" changing to dual-5GHz to admin enable per existing admin {cli_ap['AP_SLOT_ADMIN']}")
+                change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
+
+        if match_ap['AP_MODEL'] in ['CW9176D1']:
                 # assume we have a longer summary, as this will work for short or long output then
                 # clear and start a new objects
                 cli_ap = AccessPoint()
@@ -748,6 +748,8 @@ def main():
             online_ap['AP_MAC_RADIO'] = cli_match['AP_SUMMARY'].group(5)
             online_ap['AP_LOCATION'] = cli_match['AP_SUMMARY'].group(10)
             ONLINE_APs.append(online_ap)
+
+    # TODO for now.. run these one after another, as some of them append to the list
 
     # Sort them for added sanity to process loops in a way most humans think
     sorted_ONLINE_APs = sorted(ONLINE_APs, key=lambda x: (x['AP_NAME'], x['AP_CDP_SWITCH_PORT_LOCAL']))

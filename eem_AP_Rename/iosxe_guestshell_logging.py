@@ -105,7 +105,7 @@ class GuestShellLogging(logging.getLoggerClass()):
         :return: None
         """
         if self.isEnabledFor(CUSTOM_NOTICE):
-            self._log(CUSTOM_NOTICE, msg, args, **kwargs, stacklevel=2)
+            self._log(CUSTOM_NOTICE, msg, args, **kwargs)
 
 
 # pylint: disable=too-few-public-methods
