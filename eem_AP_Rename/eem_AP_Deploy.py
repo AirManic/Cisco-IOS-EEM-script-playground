@@ -324,7 +324,7 @@ def get_ap_cdp(chk_ap=None):
     global ONLINE_APs
     if chk_ap is None: return
     if args_global.name is not None and args_global.name != "ALL":
-        wait_time = 211
+        wait_time = 300
         send_ios_syslog(severity=l_INFO,
                         message=f"{args_global.name} waiting up to {wait_time} seconds for CDP information")
         start_time = time.time()
@@ -332,7 +332,7 @@ def get_ap_cdp(chk_ap=None):
             while len(cli_results['show_cdp_neighbor']) < 10 and time.time() - start_time < wait_time:
                 cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
         send_ios_syslog(severity=l_INFO,
-                        message=f"{args_global.name} got CDP information after {time.time() - start_time} seconds")
+                        message=f"{args_global.name} got CDP information after {(time.time() - start_time):.3f} seconds")
         # # TODO fix sleep
         # send_ios_syslog(severity=l_INFO,
         #                     message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information")
