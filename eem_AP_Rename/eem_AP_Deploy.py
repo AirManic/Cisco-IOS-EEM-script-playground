@@ -165,18 +165,18 @@ cli_results = defaultdict(str)
 ONLINE_APs = []
 NEW_APs = []
 
-run_string = ''.join(random.choices(string.digits, k=5))
+RRID = ''.join(random.choices(string.digits, k=5))
 send_ios_syslog_last_msg_time = time.time()
 def send_ios_syslog(message:str=None, severity:int=l_INFO):
     global args_global
-    global run_string
+    global RRID
     global send_ios_syslog_last_msg_time
     try:
         for line in message.splitlines():
             stack_msg = ""
 
             if args_global.verbose:
-                stack_msg = f"{my_name}@{inspect.stack()[1][2]:>3} {inspect.stack()[1][3]}() RR{run_string} "
+                stack_msg = f"{my_name}@{inspect.stack()[1][2]:>3} {inspect.stack()[1][3]}() RR{RRID} "
             log_string = f"{stack_msg}{line}"
             if is_guestshell:
                 # Construct the standard Cisco log prefix
@@ -215,7 +215,7 @@ def show_ap(command:Union[str,list]=None):
     command_seq = []
     for cmd in command_loop:
         command_seq.append(f"{cmd}")
-    if args_global.debug: send_ios_syslog(severity=l_INFO, message=f"fetching cli([{command}])")
+    if args_global.debug: logger.info(f"fetching cli([{command}])")
     results = cli(command)
     return results
 
@@ -231,7 +231,7 @@ def change_ap(command:Union[str,list]=None):
     for cmd in command_loop:
         if command_seq != "": command_seq += ";"
         command_seq = command_seq + (f"{cripple}{cmd}")
-    send_ios_syslog(severity=l_INFO, message=f"sending cli('{command_seq}')")
+    logger.info(f"sending cli('{command_seq}')")
     results = cli(command)
     return results
 
@@ -329,19 +329,12 @@ def get_ap_cdp(chk_ap=None):
     if chk_ap is None: return
     if args_global.name is not None and args_global.name != "ALL":
         wait_time = 300
-        send_ios_syslog(severity=l_INFO,
-                        message=f"{args_global.name} waiting up to {wait_time} seconds for CDP information")
+        logger.info(f"{args_global.name} waiting up to {wait_time} seconds for CDP information")
         start_time = time.time()
         if is_guestshell:
             while len(cli_results['show_cdp_neighbor']) < 10 and time.time() - start_time < wait_time:
                 cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
-        send_ios_syslog(severity=l_INFO,
-                        message=f"{args_global.name} got CDP information after {(time.time() - start_time):.3f} seconds")
-        # # TODO fix sleep
-        # send_ios_syslog(severity=l_INFO,
-        #                     message=f"{args_global.name} single AP sleeping 210 sec to wait for CDP information")
-        # if is_guestshell:
-        #     time.sleep(210.001)  # Allow time for AP CDP to roll in.. take about 3 1/2 mins
+        logger.info(f"{args_global.name} got CDP information after {(time.time() - start_time):.3f} seconds")
     cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
     if not is_guestshell:
         cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
@@ -378,7 +371,7 @@ def get_ap_cdp(chk_ap=None):
                             and cli_ap['AP_CDP_SWITCH_PORT_LOCAL'])
 
         if cli_match['HIT']:
-            if args_global.debug: send_ios_syslog(severity=l_DEBUG, message=f"CDP detected {cli_ap}")
+            if args_global.debug: logger.debug(f"CDP detected {cli_ap}")
             # most likely, this is the only AP entry and this is first AP_CDP_SWITCH_PORT_LOCAL need to track
             if (chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
                     or chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] == cli_ap['AP_CDP_SWITCH_PORT_LOCAL']):
@@ -411,9 +404,8 @@ def get_ap_serial(chk_ap=None):
         cli_match['AP_SERIAL'] = re.search(pattern['AP_SERIAL'], line)
         if cli_match['AP_SERIAL']:
             chk_ap['AP_SERIAL'] = cli_match['AP_SERIAL'].group(1)
-    if args_global.debug: send_ios_syslog(severity=l_DEBUG,
-                                   message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                           f" is {chk_ap['AP_SERIAL']}")
+    if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                       f" is {chk_ap['AP_SERIAL']}")
 
 def get_tilt(chk_ap=None):
     global cli_results
@@ -429,8 +421,7 @@ def get_tilt(chk_ap=None):
         cli_match['AP_TILT'] = re.search(pattern['AP_TILT'], line)
         if cli_match['AP_TILT']:
             chk_ap['AP_TILT'] = cli_match['AP_TILT'].group(1)
-    if args_global.accel: send_ios_syslog(severity=l_DEBUG,
-                    message=f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
+    if args_global.accel: logger.debug(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
 
 def get_speed_duplex(chk_ap=None):
     global cli_results
@@ -464,7 +455,7 @@ def get_speed_duplex(chk_ap=None):
                             and cli_ap['AP_CDP_SWITCH_PORT_SPEED'] and cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'])
 
         if cli_match['HIT']:
-            if args_global.debug: send_ios_syslog(severity=l_DEBUG, message=f"detected cli_ap {cli_ap}")
+            if args_global.debug: logger.debug(f"detected cli_ap {cli_ap}")
 
             # most likely, this is the only AP entry and this is first AP_CDP_SWITCH_PORT_LOCAL need to track
             if (chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
@@ -489,10 +480,9 @@ def get_speed_duplex(chk_ap=None):
             cli_ap['AP_CDP_SWITCH_PORT_SPEED']  = None
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = None
             if args_global.debug:
-                send_ios_syslog(severity=l_DEBUG,
-                                message=f"match_ap {match_ap['AP_NAME']}"
-                                        f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
-                                        f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
+                logger.debug(f"match_ap {match_ap['AP_NAME']}"
+                             f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
+                             f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
             # check to see if this has correct speed max
             switch_port_speed_max = None
             if match_ap['AP_CDP_SWITCH_PORT']:
@@ -522,17 +512,14 @@ def do_ap_rename(chk_ap=None):
     # First look for a full match of all the criteria that is present
     # only look for AP-s that need to be renamed, so match does not include AP_NAME itself
     criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-    if args_global.debug:send_ios_syslog(severity=l_DEBUG,
-                                  message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
+    if args_global.debug:logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
                                           f"doing NEW_APs match criteria {criteria}")
-    if args_global.debug:send_ios_syslog(severity=l_DEBUG,
-                                  message=f"chk_ap is {chk_ap}")
+    if args_global.debug:logger.debug(f"chk_ap is {chk_ap}")
     match_ap = chk_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
     if match_ap:
-        if args_global.debug: send_ios_syslog(severity=l_DEBUG, message=f"chk_ap {chk_ap} in as NEW_APs {match_ap}")
+        if args_global.debug: logger.debug(f"chk_ap {chk_ap} in as NEW_APs {match_ap}")
         if match_ap['AP_NAME'] != chk_ap['AP_NAME']:
-            send_ios_syslog(severity=l_INFO,
-                            message=f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
+            logger.info(f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} name {match_ap['AP_NAME']}")
 
 def do_dual_5ghz(chk_ap=None):
@@ -549,21 +536,18 @@ def do_dual_5ghz(chk_ap=None):
     # First look for a full match of all the criteria that is present
     # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
     criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-    if args_global.debug: send_ios_syslog(severity=l_DEBUG,
-                                  message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                          f"matching in NEW_APs criteria {criteria} {chk_ap} ")
+    if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
+                                       f"matching in NEW_APs criteria {criteria} {chk_ap} ")
     match_ap = chk_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
     if match_ap:
-        if args_global.debug: send_ios_syslog(severity=l_DEBUG,
-                                       message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                               f"HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
+        if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
+                                           f"HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
 
         # TODO deal with explicit Disabled
         if match_ap['AP_MODEL'] in ['CW9178I', 'CW9176D1']:
             # Check based on AP_MODEL and if dual 5GHz is not enabled, enable it respectively
-            if args_global.debug: send_ios_syslog(severity=l_DEBUG,
-                                           message=f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
-                                                   f" checking status")
+            if args_global.debug: logger.debug(f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
+                                               f" checking status")
             if match_ap['AP_MODEL'] == "CW9178I":
                 # assume we have a longer summary, as this will work for short or long output then
                 # Check Slot 1 first
@@ -603,10 +587,9 @@ def do_dual_5ghz(chk_ap=None):
                                         and cli_ap['AP_SLOT_ADMIN'])
 
                     if cli_match['HIT'] and args_global.debug:
-                        send_ios_syslog(severity=l_DEBUG,
-                                        message=f"match_ap {match_ap['AP_NAME']}"
-                                                f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
-                                                f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
+                        logger.debug(f"match_ap {match_ap['AP_NAME']}"
+                                     f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
+                                     f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
 
                     # no need to keep looking, so break the loop checking line
                     if cli_match['HIT']:
@@ -615,20 +598,18 @@ def do_dual_5ghz(chk_ap=None):
                         break
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
-                    send_ios_syslog(severity=l_INFO,
-                                    message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                            f" Slot {chk_ap['AP_SLOT']}"
-                                            f" changing to dual_mode for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+                    logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                f" Slot {chk_ap['AP_SLOT']}"
+                                f" changing to dual_mode for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz slot 2 shutdown")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz dual-radio mode enable")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown")
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
-                    send_ios_syslog(severity=l_INFO,
-                                    message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                            f" slot {cli_ap['AP_SLOT']}"
-                                            f" changing to dual-5GHz to admin enable per existing"
-                                            f" dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+                    logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                f" slot {cli_ap['AP_SLOT']}"
+                                f" changing to dual-5GHz to admin enable per existing"
+                                f" dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
 
                 # assume we have a longer summary, as this will work for short or long output then
@@ -661,10 +642,9 @@ def do_dual_5ghz(chk_ap=None):
                                         and cli_ap['AP_SLOT']
                                         and cli_ap['AP_SLOT_ADMIN'])
                     if cli_match['HIT'] and args_global.debug:
-                        send_ios_syslog(severity=l_DEBUG,
-                                        message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                                f" slot {cli_ap['AP_SLOT']}"
-                                                f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
+                        logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                     f" slot {cli_ap['AP_SLOT']}"
+                                     f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
 
                     # no need to keep looking, so break the loop checking line
                     if cli_match['HIT']:
@@ -674,10 +654,9 @@ def do_dual_5ghz(chk_ap=None):
 
                 if (cli_match['HIT']
                         and cli_ap['AP_SLOT_ADMIN'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled"):
-                    send_ios_syslog(severity=l_INFO,
-                                    message=f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']}"
-                                            f" slot {cli_ap['AP_SLOT']}"
-                                            f" changing to dual-5GHz to admin enable per existing admin {cli_ap['AP_SLOT_ADMIN']}")
+                    logger.info(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']}"
+                                f" slot {cli_ap['AP_SLOT']}"
+                                f" changing to dual-5GHz to admin enable per existing admin {cli_ap['AP_SLOT_ADMIN']}")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
 
             elif match_ap['AP_MODEL'] == "CW9176D1":
@@ -729,10 +708,9 @@ def do_dual_5ghz(chk_ap=None):
                                         and cli_ap['AP_SLOT_BAND']
                                         and cli_ap['AP_SLOT_ADMIN'])
                     if cli_match['HIT'] and args_global.debug:
-                        send_ios_syslog(severity=l_DEBUG,
-                                        message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                                f" slot {cli_ap['AP_SLOT']}"
-                                                f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                        logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                     f" slot {cli_ap['AP_SLOT']}"
+                                     f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
                     # no need to keep looking, so break the loop checking line
                     if cli_match['HIT']:
                         # update chk_ap
@@ -740,11 +718,10 @@ def do_dual_5ghz(chk_ap=None):
                         break
 
                 if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
-                    send_ios_syslog(severity=l_INFO,
-                                    message=f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                            f" slot {cli_ap['AP_SLOT']}"
-                                            f" changing to enable dual-5GHz for existing"
-                                            f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                    logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                f" slot {cli_ap['AP_SLOT']}"
+                                f" changing to enable dual-5GHz for existing"
+                                f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
                     change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
@@ -794,7 +771,7 @@ def main():
                         help=f"don't actually make change")
     args_global, args_unknown = parser.parse_known_args()
 
-    send_ios_syslog(severity=l_INFO, message=f"Starting ... {sys.argv}")
+    logger.info(f"Starting ... {sys.argv}")
 
     # Open the CSV file for the desired AP mapping
     # basically, we want all loops to still work.. so we can at least collect what we can collect despite lacking information
@@ -807,14 +784,14 @@ def main():
             for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
                 append_ap = AccessPoint(**ap)
                 NEW_APs.append(append_ap)
-                if args_global.debug: send_ios_syslog(message=f"infile_csv {args_global.infile_csv} has {append_ap['AP_NAME']} {append_ap}")
+                if args_global.debug: logger.debug(f"infile_csv {args_global.infile_csv} has {append_ap['AP_NAME']} {append_ap}")
     else:
         print(f"{args_global.infile_csv} not found.")
 
     if args_global.debug:
-        # send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {len(NEW_APs)} APs from infile_csv {args_global.infile_csv}")
+        logger.debug(f"NEW_APs has {len(NEW_APs)} APs from infile_csv {args_global.infile_csv}")
         for ap in NEW_APs:
-            send_ios_syslog(severity=l_DEBUG, message=f"NEW_APs has {ap['AP_NAME']} {ap}")
+            logger.debug(f"NEW_APs has {ap['AP_NAME']} {ap}")
 
     if args_global.name is not None and args_global.name != "ALL":
         cli_results['show_ap_summary'] = show_ap(command=f"show ap summary | inc {args_global.name}")
@@ -849,7 +826,7 @@ def main():
         # Convert to list to force execution and wait until ALL are completed
         results = list(iterator)
 
-    if args_global.debug: send_ios_syslog(severity=l_INFO, message=f"ONLINE_APs length is {len(ONLINE_APs)}")
+    if args_global.debug: logger.info(f"ONLINE_APs length is {len(ONLINE_APs)}")
 
     # only dump if doing ALL AP-s
     if args_global.list and (args_global.name is None or args_global.name == "ALL"):
@@ -874,9 +851,9 @@ def main():
             writer.writeheader()
             # Write all rows at once
             writer.writerows(sorted_ONLINE_APs)
-        send_ios_syslog(severity=l_INFO, message=f"sorted_ONLINE_APs of {len(sorted_ONLINE_APs)} items is written to {args_global.outfile_csv}")
+        logger.info(f"sorted_ONLINE_APs of {len(sorted_ONLINE_APs)} items is written to {args_global.outfile_csv}")
 
-    send_ios_syslog(severity=l_INFO, message=f"Finished ... {sys.argv}")
+    logger.info(f"Finished ... {sys.argv}")
 
 
 if __name__ == "__main__":
