@@ -151,14 +151,6 @@ else:
 
 logger = configure_guestshell_logging(__name__)
 
-logger.critical("GuestShell example: Critical message (level 2)")
-logger.error("GuestShell example: Error message (level 3)")
-logger.warning("GuestShell example: Warning message (level 4)")
-logger.notice("GuestShell example: Notice message (level 5)")
-logger.info("GuestShell example: Info message (level 6)")
-logger.debug("GuestShell example: Debug message (level 7)")
-
-
 l_DEBUG  = 7
 l_INFO   = 6
 l_NOTICE = 5
@@ -518,10 +510,9 @@ def get_speed_duplex(chk_ap=None):
             if switch_port_speed_max and ap_speed_max:
                 expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
             if expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed:
-                send_ios_syslog(severity=l_WARN,
-                                message=f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
-                                        f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} Mbps against expected {expected_speed} Mbps"
-                                        f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
+                logger.notice(f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
+                               f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} Mbps against expected {expected_speed} Mbps"
+                               f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
 
 def do_ap_rename(chk_ap=None):
     global cli_results

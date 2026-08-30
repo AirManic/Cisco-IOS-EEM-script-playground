@@ -101,7 +101,7 @@ class GuestShellLogging(logging.getLoggerClass()):
         :return: None
         """
         if self.isEnabledFor(CUSTOM_NOTICE):
-            self._log(CUSTOM_NOTICE, msg, args, **kwargs)
+            self._log(CUSTOM_NOTICE, msg, args, **kwargs, stacklevel=2)
 
 
 # pylint: disable=too-few-public-methods
@@ -155,12 +155,12 @@ def configure_guestshell_logging(logger_name: str = None,
     # Device console shows:
     # *Aug  3 19:18:20.226: %IM-5-IOX_INST_NOTICE: Chassis 1 R0/0: ioxman: IOX SERVICE guestshell LOG: Example notice message
     gs_formatter = logging.Formatter(
-        fmt="[a123b234,1,%(xe_log_level)s]%(message)s"
+        fmt="[a123b234,1,%(xe_log_level)s]%(funcName)s@%(lineno)d: %(message)s"
     )
 
     # Aug 03 19:18:00: __main__: NOTICE: Example message
     stdout_formatter = logging.Formatter(
-        fmt="%(asctime)s: %(name)s: %(levelname)s: %(message)s",
+        fmt="%(asctime)s: %(name)s: %(levelname)s: %(funcName)s@%(lineno)d: %(message)s",
         datefmt="%b %d %H:%M:%S"
     )
 
