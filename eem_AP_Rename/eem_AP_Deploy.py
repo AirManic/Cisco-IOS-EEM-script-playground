@@ -159,7 +159,6 @@ l_ERR    = 3
 l_CRIT   = 2
 
 args_global = argparse.Namespace()
-args_global.verbose = False
 
 cli_results = defaultdict(str)
 ONLINE_APs = []
@@ -724,8 +723,6 @@ def main():
                         help=f"print accelerometer for each AP")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
-    parser.add_argument('-v', '--verbose', required=False, action='store_true',
-                        help=f"print verbose syslog message details")
     parser.add_argument('-X', '--Xchange', required=False, action='store_true',
                         help=f"don't actually make change")
     args_global, args_unknown = parser.parse_known_args()
