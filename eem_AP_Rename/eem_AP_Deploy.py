@@ -305,7 +305,7 @@ def get_ap_cdp(chk_ap=None):
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_cdp_neighbor'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
-        if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
+        if cli_match['AP_NAME']:
             cli_ap = AccessPoint()
             if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                 cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
@@ -395,7 +395,6 @@ def get_speed_duplex(chk_ap=None):
     for line in cli_results['show_ap_ether_stats'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_NAME']:
-            # clear start a new cli_ap object
             cli_ap = AccessPoint()
             if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                 cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
@@ -518,11 +517,12 @@ def do_dual_5ghz(chk_ap=None):
         cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
-            if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
+            if cli_match['AP_NAME']:
                 cli_ap = AccessPoint()
+                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME"
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-                    chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME"
+                    chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME_MATCH"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT'] is None
                     and cli_match['AP_SLOT']):
@@ -582,7 +582,7 @@ def do_dual_5ghz(chk_ap=None):
         cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
-            if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
+            if cli_match['AP_NAME']:
                 cli_ap = AccessPoint()
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
@@ -630,11 +630,12 @@ def do_dual_5ghz(chk_ap=None):
         cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
-            if cli_ap['AP_NAME'] is None and cli_match['AP_NAME']:
+            if cli_match['AP_NAME']:
                 cli_ap = AccessPoint()
+                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME"
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-                    chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME"
+                    chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME_MATCH"
             if (cli_ap['AP_NAME']
                 and cli_ap['AP_SLOT'] is None and cli_match['AP_SLOT']):
                 cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
