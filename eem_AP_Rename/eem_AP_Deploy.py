@@ -498,6 +498,7 @@ def do_dual_5ghz(chk_ap=None):
 
     # TODO deal with explicit Disabled
 
+    # chk_ap['AP_DUAL_5GHZ'] is a debugging approach to track what part of the code for each AP
     chk_ap['AP_DUAL_5GHZ'] = f"TBD"
 
     if chk_ap['AP_MODEL'] in ['CW9179F']:
@@ -682,6 +683,9 @@ def do_dual_5ghz(chk_ap=None):
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
+
+    # get rid of chk_ap['AP_DUAL_5GHZ']
+    # chk_ap.pop('AP_DUAL_5GHZ')
 
 def process_ap(chk_ap=None):
     try:
