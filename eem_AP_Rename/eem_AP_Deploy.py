@@ -390,7 +390,7 @@ def get_speed_duplex(chk_ap=None):
     cli_ap = AccessPoint()
     pattern = defaultdict(lambda : re.compile(rf'~'))
     pattern['AP_NAME'] =            re.compile(rf"^(?:AP Name\s+:|Ethernet Stats for AP)\s+(\S+)")
-    pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(\S+)\s+(\d+)\s+(Mbps)\s+(\S+)")
+    pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(GigabitEthernet\d)\s+(UP)\s+(\d+)\s+(Mbps)\s+(\S+)")
     cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
     for line in cli_results['show_ap_ether_stats'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
@@ -442,9 +442,8 @@ def get_speed_duplex(chk_ap=None):
                 elif match_ap['AP_CDP_SWITCH_PORT'].startswith('FiveGigabitEthernet'):  switch_port_speed_max = '5000'
                 elif match_ap['AP_CDP_SWITCH_PORT'].startswith('TwoGigabitEthernet'):  switch_port_speed_max = '2500'
                 elif match_ap['AP_CDP_SWITCH_PORT'].startswith('GigabitEthernet'):  switch_port_speed_max = '1000'
-            ap_speed_max = switch_port_speed_max
+            ap_speed_max = None
             if match_ap['AP_MODEL']:
-                # assume AP models not explicitly listed can do max speed of switchport to start
                 # TODO categorize more AP_MODEL-s
                 if match_ap['AP_MODEL'].startswith('CW917'): ap_speed_max = '10000'
                 if match_ap['AP_MODEL'].startswith('AIR-AP38'):  ap_speed_max = '5000'
@@ -457,6 +456,8 @@ def get_speed_duplex(chk_ap=None):
                               f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']}/{match_ap['AP_CDP_SWITCH_PORT_DUPLEX']} Mbps"
                               f" expected {expected_speed}/Full Mbps"
                               f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
+            # TODO FIX ALIGNMENT WITH MULTIPLE SWITCHPORT CDP
+
 
 def do_ap_rename(chk_ap=None):
     global ONLINE_APs
