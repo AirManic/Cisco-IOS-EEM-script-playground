@@ -451,10 +451,12 @@ def get_speed_duplex(chk_ap=None):
             expected_speed = None
             if switch_port_speed_max and ap_speed_max:
                 expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
-            if expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed:
-                logger.notice(f"match_ap {match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
-                               f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']} Mbps against expected {expected_speed} Mbps"
-                               f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
+            if (expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed
+                or match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] != "Full"):
+                logger.notice(f"{match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
+                              f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']}/{match_ap['AP_CDP_SWITCH_PORT_DUPLEX']} Mbps"
+                              f" expected {expected_speed}/Full Mbps"
+                              f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
 
 def do_ap_rename(chk_ap=None):
     global ONLINE_APs
