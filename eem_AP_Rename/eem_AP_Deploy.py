@@ -520,25 +520,24 @@ def do_dual_5ghz(chk_ap=None):
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
             if cli_match['AP_NAME']:
                 cli_ap = AccessPoint()
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME"
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-                    chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME_MATCH"
+                    chk_ap['AP_DUAL_5GHZ_STEP'] += f"_AP_NAME_MATCH"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT'] is None
                     and cli_match['AP_SLOT']):
                 cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_SLOT{cli_ap['AP_SLOT']}"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT_DUAL_ROLE'] is None
                     and cli_match['AP_SLOT_DUAL_ROLE']):
                 cli_ap['AP_SLOT_DUAL_ROLE'] = cli_match['AP_SLOT_DUAL_ROLE'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}_DUAL_ROLE"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_DUAL_ROLE"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT_ADMIN'] is None
                     and cli_match['AP_SLOT_ADMIN']):
                 cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}_ADMIN"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_ADMIN"
 
 
             cli_match['HIT'] = (cli_ap['AP_NAME']
@@ -587,14 +586,19 @@ def do_dual_5ghz(chk_ap=None):
                 cli_ap = AccessPoint()
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                    chk_ap['AP_DUAL_5GHZ_STEP'] += f"_AP_NAME_MATCH"
+
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT'] is None
                     and cli_match['AP_SLOT']):
                 cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_SLOT{cli_ap['AP_SLOT']}"
             if (cli_ap['AP_SLOT']
                     and cli_ap['AP_SLOT_ADMIN'] is None
                     and cli_match['AP_SLOT_ADMIN']):
                 cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_ADMIN"
+
             cli_match['HIT'] = (cli_ap['AP_NAME']
                                 and cli_ap['AP_SLOT']
                                 and cli_ap['AP_SLOT_ADMIN'])
@@ -606,7 +610,7 @@ def do_dual_5ghz(chk_ap=None):
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
                 # update chk_ap
-                chk_ap['AP_DUAL_5GHZ'] = f"{chk_ap['AP_DUAL_5GHZ']} / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                chk_ap['AP_DUAL_5GHZ'] += f" / Slot {cli_ap['AP_SLOT']} admin {cli_ap['AP_SLOT_ADMIN']}"
                 break
 
         if (cli_match['HIT']
