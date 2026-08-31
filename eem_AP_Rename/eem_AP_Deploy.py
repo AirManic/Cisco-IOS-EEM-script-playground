@@ -481,7 +481,7 @@ def do_dual_5ghz(chk_ap=None):
     cli_results['show_ap_config_slot'] = ""
     for i in range(0, 4):
         cli_results['show_ap_config_slot'] = (cli_results['show_ap_config_slot']
-                    + show_ap(command=f"show ap name {args_global.name} config slot {i}"))
+                    + show_ap(command=f"show ap name {chk_ap['AP_NAME']} config slot {i}"))
     if not is_guestshell:
         cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
 
