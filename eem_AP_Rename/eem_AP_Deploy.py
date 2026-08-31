@@ -498,11 +498,15 @@ def do_dual_5ghz(chk_ap=None):
 
     # TODO deal with explicit Disabled
 
-    # chk_ap['AP_DUAL_5GHZ'] is a debugging approach to track what part of the code for each AP
+    # chk_ap['AP_DUAL_5GHZ_STEP'] is a debugging approach to track what part of the code for each AP
+    chk_ap['AP_DUAL_5GHZ_STEP'] = f"TBD"
+
     chk_ap['AP_DUAL_5GHZ'] = f"TBD"
 
     if chk_ap['AP_MODEL'] in ['CW9179F']:
         chk_ap['AP_DUAL_5GHZ'] = f"NA"
+        chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9179F"
+
 
     if chk_ap['AP_MODEL'] in ['CW9178I']:
         chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9178I"
@@ -637,30 +641,29 @@ def do_dual_5ghz(chk_ap=None):
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
             if cli_match['AP_NAME']:
                 cli_ap = AccessPoint()
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME"
                 if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
-                    chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_NAME_MATCH"
+                    chk_ap['AP_DUAL_5GHZ_STEP'] += f"_AP_NAME_MATCH"
             if (cli_ap['AP_NAME']
                 and cli_ap['AP_SLOT'] is None and cli_match['AP_SLOT']):
                 cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_AP_SLOT{cli_ap['AP_SLOT']}"
             if (cli_ap['AP_NAME']
                 and cli_ap['AP_SLOT_ROLE'] is None and cli_match['AP_SLOT_ROLE']):
                 cli_ap['AP_SLOT_ROLE'] = cli_match['AP_SLOT_ROLE'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}_ROLE"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_ROLE"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT_METHOD'] is None and cli_match['AP_SLOT_METHOD']):
                 cli_ap['AP_SLOT_METHOD'] = cli_match['AP_SLOT_METHOD'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}_METHOD"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_METHOD"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT_BAND'] is None and cli_match['AP_SLOT_BAND']):
                 cli_ap['AP_SLOT_BAND'] = cli_match['AP_SLOT_BAND'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}_BAND"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_BAND"
             if (cli_ap['AP_NAME']
                     and cli_ap['AP_SLOT_ADMIN'] is None and cli_match['AP_SLOT_ADMIN']):
                 cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group(1)
-                chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9176D1_AP_SLOT{cli_ap['AP_SLOT']}_ADMIN"
+                chk_ap['AP_DUAL_5GHZ_STEP'] += f"_ADMIN"
 
             cli_match['HIT'] = (cli_ap['AP_NAME']
                                 and cli_ap['AP_SLOT']
@@ -688,8 +691,8 @@ def do_dual_5ghz(chk_ap=None):
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
-    # get rid of chk_ap['AP_DUAL_5GHZ']
-    # chk_ap.pop('AP_DUAL_5GHZ')
+    # get rid of chk_ap['AP_DUAL_5GHZ_STEP']
+    chk_ap.pop('AP_DUAL_5GHZ_STEP')
 
 def process_ap(chk_ap=None):
     try:
