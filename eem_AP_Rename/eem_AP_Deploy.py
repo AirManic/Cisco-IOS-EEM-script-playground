@@ -816,7 +816,9 @@ def main():
     # only dump if doing ALL AP-s
     if args_global.list and (args_global.name is None or args_global.name == "ALL"):
         csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
-                      'AP_LOCATION', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
+                      'AP_LOCATION',
+                      'AP_CDP_SWITCH_PORT_LOCAL', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
+                      'AP_CDP_SWITCH_PORT_SPEED', 'AP_CDP_SWITCH_PORT_DUPLEX',
                       'AP_DUAL_5GHZ']
 
         # sort again, allowing for repeated AP_NAME for AP_CDP_SWITCH_PORT_LOCAL
