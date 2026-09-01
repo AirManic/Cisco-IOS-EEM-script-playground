@@ -82,7 +82,7 @@ no event manager applet eem_AP_Rename
  ! action 300.020.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename_new.py bootflash:/guest-share/" pattern "]"
  ! action 300.020.6 cli command "" pattern "[confirm]"
  ! action 300.020.7 cli command "y"
- action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename_new.py -n $find_ap_name"
+ action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename_new.py -n $find_ap_name -l -h"
  action 900.999.9 syslog msg "Finished"
 !
 end
@@ -736,8 +736,8 @@ def main():
     parser.add_argument('-o', '--outfile_csv', type=str, required=False,
                         default=f"{DEFAULT_OUTFILE}",
                         help=f"specify outfile csv to dump ONLINE_AP list, defaults to {DEFAULT_INFILE}")
-    parser.add_argument('-l', '--list', required=False, action='store_true',
-                        help=f"list the ONLINE_AP in the outfile csv. Only works if -n not used or is ALL")
+    parser.add_argument('-h', '--harvest', required=False, action='store_true',
+                        help=f"harvest the ONLINE_AP in the outfile csv. Only works if -n not used or is ALL")
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
                         help=f"check only this specific AP name")
@@ -747,15 +747,19 @@ def main():
                         help=f"print accelerometer for each AP")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
+    parser.add_argument('-l', '--logfile', required=False, action='store_true',
+                        help=f"logging file")
     parser.add_argument('-t', '--trace', required=False, action='store_true',
-                        help=f"trace logging")
+                        help=f"trace logging file")
     parser.add_argument('-X', '--Xchange', required=False, action='store_true',
                         help=f"don't actually make change")
     args_global, args_unknown = parser.parse_known_args()
 
-    if args_global.trace:
+    if args_global.logfile:
         # tweak logger
         logger = configure_guestshell_logging(__name__, trace_log=DEFAULT_TRACEFILE)
+    if args_global.trace:
+        # tweak logger
         tracer = configure_guestshell_logging(__name__+'_trace', enable_trace=True, trace_log=DEFAULT_TRACEFILE,
                                              enable_stdout=False, enable_iosxe_syslog=False)
 
@@ -850,7 +854,7 @@ def main():
     if args_global.debug: tracer.info(f"ONLINE_APs length is {len(ONLINE_APs)}")
 
     # only dump if doing ALL AP-s
-    if args_global.list and (args_global.name is None or args_global.name == "ALL"):
+    if args_global.harvest and (args_global.name is None or args_global.name == "ALL"):
         csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
                       'AP_LOCATION',
                       'AP_CDP_SWITCH_PORT_LOCAL', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT',
