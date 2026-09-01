@@ -36,6 +36,7 @@ __author__ = "Palmer Sample <psample@cisco.com>"
 
 import os
 import logging
+import logging.handlers
 from sys import stdout as sys_stdout
 import random
 import string
@@ -135,8 +136,10 @@ class GuestShellFilter(logging.Filter):
 # pylint: disable=unused-argument, line-too-long
 def configure_guestshell_logging(logger_name: str = None,
                                  log_level: int = logging.DEBUG,
+                                 enable_iosxe_syslog: bool = True,
                                  enable_stdout: bool = True,
-                                 enable_trace: bool = True) -> logging.Logger:
+                                 enable_trace: bool = False,
+                                 trace_log: str = None) -> logging.Logger:
     """
     Wrapper function to create a logging instance and configure it with
     necessary handlers and formatters to support Guestshell logging on
@@ -144,8 +147,10 @@ def configure_guestshell_logging(logger_name: str = None,
 
     :param logger_name: Name of the logger. Default: "__main__"
     :param log_level: Minimum logging level (logging.DEBUG will catch all).
+    :param enable_iosxe_syslog: (Default: True) - also log to IOS-XE SYSLOG
     :param enable_stdout: (Default: True) - also log to STDOUT
-    :param enable_trace: Future use - not implemented at this time.
+    :param enable_trace: (Default: False) - also log to trace file
+    :param trace_log: (Default: None) - filename where to write logs and trace messages
     :return: Configured instance of the Python logging facility.
     """
 
@@ -171,25 +176,32 @@ def configure_guestshell_logging(logger_name: str = None,
         datefmt="%b %d %H:%M:%S"
     )
 
-    # pylint: disable=consider-using-with
-    try:
-        is_guestshell = os.uname().nodename == 'guestshell'
-        if is_guestshell:
-            # Send log messages to /dev/ttyS2
-            console_handler = logging.StreamHandler(
-                open("/dev/ttyS2", mode="w", encoding="utf-8")
-            )
-            console_handler.setFormatter(gs_formatter)
-            gs_logger.addHandler(console_handler)
-    except PermissionError as err:
-        raise RuntimeError(
-            f"Unable to open logging handle '/dev/ttyS2':\n{err}",
-        ) from err
+    if enable_iosxe_syslog:
+        # pylint: disable=consider-using-with
+        try:
+            is_guestshell = os.uname().nodename == 'guestshell'
+            if is_guestshell:
+                # Send log messages to /dev/ttyS2
+                console_handler = logging.StreamHandler(
+                    open("/dev/ttyS2", mode="w", encoding="utf-8")
+                )
+                console_handler.setFormatter(gs_formatter)
+                gs_logger.addHandler(console_handler)
+        except PermissionError as err:
+            raise RuntimeError(
+                f"Unable to open logging handle '/dev/ttyS2':\n{err}",
+            ) from err
 
     if enable_stdout:
         stdout_handler = logging.StreamHandler(sys_stdout)
         stdout_handler.setFormatter(stdout_formatter)
         gs_logger.addHandler(stdout_handler)
+
+    if trace_log or (enable_trace and trace_log):
+        trace_handler = logging.handlers.TimedRotatingFileHandler(trace_log, when="H", interval=6, backupCount=3)
+        trace_handler.doRollover()
+        trace_handler.setFormatter(stdout_formatter)
+        gs_logger.addHandler(trace_handler)
 
     gs_logger.setLevel(log_level)
 

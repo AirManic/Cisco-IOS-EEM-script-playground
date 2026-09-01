@@ -99,6 +99,8 @@ guestshell enable
 !
 """
 
+import logging
+import logging.handlers
 from iosxe_guestshell_logging import configure_guestshell_logging
 import argparse
 import os
@@ -122,6 +124,7 @@ is_guestshell = os.uname().nodename == 'guestshell'
 
 DEFAULT_INFILE  = "/flash/guest-share/" + Path(my_name).stem + '.csv'
 DEFAULT_OUTFILE = "/flash/guest-share/" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
+DEFAULT_TRACEFILE  = "/flash/guest-share/" + Path(my_name).stem + '_trace.txt'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
@@ -141,6 +144,7 @@ else:
         return ''
     DEFAULT_INFILE  = "./experimental/exp_" + Path(my_name).stem + '.csv'
     DEFAULT_OUTFILE = "./experimental/exp_" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
+    DEFAULT_TRACEFILE = "./experimental/exp_" + Path(my_name).stem + '_tracer.txt'
     SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
     SIM_FILE_EEM_AP_CDP = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
     SIM_FILE_EEM_AP_ETHER_STATS = f"./experimental/exp_eem_AP_ethernet_stats.txt"
@@ -148,15 +152,11 @@ else:
     SIM_FILE_EEM_AP_CDP_DETAIL = f"./experimental/exp_eem_AP_CDP_neighbors_detail.txt"
     SIM_FILE_EEM_AP_CONFIG_SLOT = f"./experimental/exp_eem_AP_config_slot.txt"
 
-
+# main logger
 logger = configure_guestshell_logging(__name__)
-
-l_DEBUG  = 7
-l_INFO   = 6
-l_NOTICE = 5
-l_WARN   = 4
-l_ERR    = 3
-l_CRIT   = 2
+# create dummy logger for trace
+tracer = gs_logger = logging.getLogger(__name__+'_trace')
+tracer.addHandler(logging.NullHandler())
 
 args_global = argparse.Namespace()
 
@@ -172,7 +172,7 @@ def show_ap(command:Union[str,list]=None):
     command_seq = []
     for cmd in command_loop:
         command_seq.append(f"{cmd}")
-    if args_global.debug: logger.info(f"fetching cli([{command}])")
+    if args_global.debug: tracer.info(f"fetching cli([{command}])")
     results = cli(command)
     return results
 
@@ -324,7 +324,7 @@ def get_ap_cdp(chk_ap=None):
                             and cli_ap['AP_CDP_SWITCH_PORT_LOCAL'])
 
         if cli_match['HIT']:
-            if args_global.debug: logger.debug(f"CDP detected {cli_ap}")
+            if args_global.debug: tracer.debug(f"CDP detected {cli_ap}")
             # most likely, this is the only AP entry and this is first AP_CDP_SWITCH_PORT_LOCAL need to track
             if (chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
                     or chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] == cli_ap['AP_CDP_SWITCH_PORT_LOCAL']):
@@ -358,8 +358,8 @@ def get_ap_serial(chk_ap=None):
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_SERIAL']:
             chk_ap['AP_SERIAL'] = cli_match['AP_SERIAL'].group(1)
-    if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                       f" is {chk_ap['AP_SERIAL']}")
+    if args_global.debug: tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                                      f" is {chk_ap['AP_SERIAL']}")
 
 def get_tilt(chk_ap=None):
     if chk_ap is None: return
@@ -376,12 +376,14 @@ def get_tilt(chk_ap=None):
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_TILT']:
             chk_ap['AP_TILT'] = cli_match['AP_TILT'].group(1)
-    if args_global.accel: logger.debug(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
+    if args_global.accel: logger.info(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
 
 def get_speed_duplex(chk_ap=None):
     if chk_ap is None: return
     global ONLINE_APs
     global NEW_APs
+    # chk_ap['AP_DUAL_5GHZ_STEP'] is a debugging approach to track what part of the code for each AP
+    chk_ap['AP_SPEED_DUPLEX_STEP'] = f"AP_SPEED_DUPLEX_STEP"
     cli_results = defaultdict(str)
     cli_results['show_ap_ether_stats'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} ethernet statistics")
     if not is_guestshell:
@@ -398,21 +400,24 @@ def get_speed_duplex(chk_ap=None):
             cli_ap = AccessPoint()
             if cli_match['AP_NAME'].group(1) == chk_ap['AP_NAME']:
                 cli_ap['AP_NAME'] = cli_match['AP_NAME'].group(1)
+                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_NAME_MATCH"
         if cli_ap['AP_NAME'] and cli_match['AP_SPEED_DUPLEX']:
             cli_ap['AP_CDP_SWITCH_PORT_LOCAL'] = cli_match['AP_SPEED_DUPLEX'].group(1)
             cli_ap['AP_CDP_SWITCH_PORT_SPEED'] = cli_match['AP_SPEED_DUPLEX'].group(3)
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = cli_match['AP_SPEED_DUPLEX'].group(5)
+            chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_SPEED_DUPLEX_{cli_ap['AP_CDP_SWITCH_PORT_SPEED']}_{cli_ap['AP_CDP_SWITCH_PORT_DUPLEX']}"
         cli_match['HIT'] = (cli_ap['AP_NAME']
                             and cli_ap['AP_CDP_SWITCH_PORT_LOCAL']
                             and cli_ap['AP_CDP_SWITCH_PORT_SPEED'] and cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'])
 
         if cli_match['HIT']:
-            if args_global.debug: logger.debug(f"detected cli_ap {cli_ap}")
+            if args_global.debug: tracer.debug(f"detected cli_ap {cli_ap}")
 
             # most likely, this is the only AP entry and this is first AP_CDP_SWITCH_PORT_LOCAL need to track
             if (chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] is None
                     or chk_ap['AP_CDP_SWITCH_PORT_LOCAL'] == cli_ap['AP_CDP_SWITCH_PORT_LOCAL']):
                 match_ap = chk_ap
+                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_CHK_AP"
             else:
                 # see if we already added this AP, if not then add it
                 match_ap = cli_ap.matching_ap(criteria=['AP_NAME', 'AP_CDP_SWITCH_PORT_LOCAL'],
@@ -423,6 +428,8 @@ def get_speed_duplex(chk_ap=None):
                     ONLINE_APs.append(match_ap)
                     match_ap['AP_CDP_SWITCH']            = None
                     match_ap['AP_CDP_SWITCH_PORT']       = None
+                    chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_APPEND"
+
             # now set the items ..
             match_ap['AP_CDP_SWITCH_PORT_LOCAL']  = cli_ap['AP_CDP_SWITCH_PORT_LOCAL']
             match_ap['AP_CDP_SWITCH_PORT_SPEED']  = cli_ap['AP_CDP_SWITCH_PORT_SPEED']
@@ -432,31 +439,37 @@ def get_speed_duplex(chk_ap=None):
             cli_ap['AP_CDP_SWITCH_PORT_SPEED']  = None
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = None
             if args_global.debug:
-                logger.debug(f"match_ap {match_ap['AP_NAME']}"
-                             f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
-                             f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
+                tracer.debug(f"match_ap {match_ap['AP_NAME']}"
+                            f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
+                            f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
             # check to see if this has correct speed max
             switch_port_speed_max = None
             if match_ap['AP_CDP_SWITCH_PORT']:
-                if   match_ap['AP_CDP_SWITCH_PORT'].startswith('TenGigabitEthernet'): switch_port_speed_max = '10000'
-                elif match_ap['AP_CDP_SWITCH_PORT'].startswith('FiveGigabitEthernet'):  switch_port_speed_max = '5000'
-                elif match_ap['AP_CDP_SWITCH_PORT'].startswith('TwoGigabitEthernet'):  switch_port_speed_max = '2500'
-                elif match_ap['AP_CDP_SWITCH_PORT'].startswith('GigabitEthernet'):  switch_port_speed_max = '1000'
+                if match_ap['AP_CDP_SWITCH_PORT'].startswith('TenGigabitEthernet'): switch_port_speed_max = '10000'
+                if match_ap['AP_CDP_SWITCH_PORT'].startswith('FiveGigabitEthernet'):  switch_port_speed_max = '5000'
+                if match_ap['AP_CDP_SWITCH_PORT'].startswith('TwoGigabitEthernet'):  switch_port_speed_max = '2500'
+                if match_ap['AP_CDP_SWITCH_PORT'].startswith('GigabitEthernet'):  switch_port_speed_max = '1000'
+                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_AP_CDP_SWITCH_PORT_{switch_port_speed_max}"
             ap_speed_max = None
             if match_ap['AP_MODEL']:
                 # TODO categorize more AP_MODEL-s
                 if match_ap['AP_MODEL'].startswith('CW917'): ap_speed_max = '10000'
                 if match_ap['AP_MODEL'].startswith('AIR-AP38'):  ap_speed_max = '5000'
+                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_AP_MODEL_{ap_speed_max}"
             expected_speed = None
             if switch_port_speed_max and ap_speed_max:
                 expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
+                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_EXPECTED_{expected_speed}"
             if (expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed
                 or match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] != "Full"):
                 logger.notice(f"{match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
                               f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']}/{match_ap['AP_CDP_SWITCH_PORT_DUPLEX']} Mbps"
                               f" expected {expected_speed}/Full Mbps"
                               f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
-            # TODO FIX ALIGNMENT WITH MULTIPLE SWITCHPORT CDP
+                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_FIX"
+
+    # TODO FIX ALIGNMENT WITH MULTIPLE SWITCHPORT CDP
+    chk_ap.pop('AP_SPEED_DUPLEX_STEP')
 
 
 def do_ap_rename(chk_ap=None):
@@ -466,12 +479,12 @@ def do_ap_rename(chk_ap=None):
     # First look for a full match of all the criteria that is present
     # only look for AP-s that need to be renamed, so match does not include AP_NAME itself
     criteria = ['AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-    if args_global.debug:logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                          f"doing NEW_APs match criteria {criteria}")
-    if args_global.debug:logger.debug(f"chk_ap is {chk_ap}")
+    if args_global.debug:tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
+                                     f"doing NEW_APs match criteria {criteria}")
+    if args_global.debug:tracer.debug(f"chk_ap is {chk_ap}")
     match_ap = chk_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
     if match_ap:
-        if args_global.debug: logger.debug(f"chk_ap {chk_ap} in as NEW_APs {match_ap}")
+        if args_global.debug: tracer.debug(f"chk_ap {chk_ap} in as NEW_APs {match_ap}")
         if match_ap['AP_NAME'] != chk_ap['AP_NAME']:
             logger.info(f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} name {match_ap['AP_NAME']}")
@@ -491,18 +504,18 @@ def do_dual_5ghz(chk_ap=None):
     # First look for a full match of all the criteria that is present
     # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
     criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
-    if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                       f"matching in NEW_APs criteria {criteria} {chk_ap} ")
+    if args_global.debug: tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
+                                      f"matching in NEW_APs criteria {criteria} {chk_ap} ")
     match_ap = chk_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
     if match_ap is None: match_ap = AccessPoint()
 
-    if args_global.debug: logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
-                                       f"HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
+    if args_global.debug: tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
+                                      f"HIT as {match_ap['AP_NAME']} {match_ap['AP_MODEL']}")
 
     # TODO deal with explicit Disabled
 
     # chk_ap['AP_DUAL_5GHZ_STEP'] is a debugging approach to track what part of the code for each AP
-    chk_ap['AP_DUAL_5GHZ_STEP'] = f"TBD"
+    chk_ap['AP_DUAL_5GHZ_STEP'] = f"AP_DUAL_5GHZ_STEP"
 
     chk_ap['AP_DUAL_5GHZ'] = f"TBD"
 
@@ -553,9 +566,9 @@ def do_dual_5ghz(chk_ap=None):
                                 and cli_ap['AP_SLOT_ADMIN'])
 
             if cli_match['HIT'] and args_global.debug:
-                logger.debug(f"match_ap {match_ap['AP_NAME']}"
-                             f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
-                             f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
+                tracer.debug(f"match_ap {match_ap['AP_NAME']}"
+                            f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
+                            f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
 
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
@@ -610,9 +623,9 @@ def do_dual_5ghz(chk_ap=None):
                                 and cli_ap['AP_SLOT']
                                 and cli_ap['AP_SLOT_ADMIN'])
             if cli_match['HIT'] and args_global.debug:
-                logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                             f" slot {cli_ap['AP_SLOT']}"
-                             f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
+                tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                            f" slot {cli_ap['AP_SLOT']}"
+                            f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
 
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
@@ -675,9 +688,9 @@ def do_dual_5ghz(chk_ap=None):
                                 and cli_ap['AP_SLOT_BAND']
                                 and cli_ap['AP_SLOT_ADMIN'])
             if cli_match['HIT'] and args_global.debug:
-                logger.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                             f" slot {cli_ap['AP_SLOT']}"
-                             f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                            f" slot {cli_ap['AP_SLOT']}"
+                            f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
                 # update chk_ap
@@ -706,6 +719,8 @@ def process_ap(chk_ap=None):
         pass
 
 def main():
+    global logger
+    global tracer
     global ONLINE_APs
     global NEW_APs
     cli_results = defaultdict(str)
@@ -732,9 +747,17 @@ def main():
                         help=f"print accelerometer for each AP")
     parser.add_argument('-d', '--debug', required=False, action='store_true',
                         help=f"print debug message")
+    parser.add_argument('-t', '--trace', required=False, action='store_true',
+                        help=f"trace logging")
     parser.add_argument('-X', '--Xchange', required=False, action='store_true',
                         help=f"don't actually make change")
     args_global, args_unknown = parser.parse_known_args()
+
+    if args_global.trace:
+        # tweak logger
+        logger = configure_guestshell_logging(__name__, trace_log=DEFAULT_TRACEFILE)
+        tracer = configure_guestshell_logging(__name__+'_trace', enable_trace=True, trace_log=DEFAULT_TRACEFILE,
+                                             enable_stdout=False, enable_iosxe_syslog=False)
 
     logger.info(f"Starting ... {sys.argv}")
 
@@ -749,14 +772,13 @@ def main():
             for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
                 append_ap = AccessPoint(**ap)
                 NEW_APs.append(append_ap)
-                if args_global.debug: logger.debug(f"infile_csv {args_global.infile_csv} has {append_ap['AP_NAME']} {append_ap}")
+                if args_global.debug: tracer.debug(f"infile_csv {args_global.infile_csv} has {append_ap['AP_NAME']} {append_ap}")
     else:
         print(f"{args_global.infile_csv} not found.")
 
-    if args_global.debug:
-        logger.debug(f"NEW_APs has {len(NEW_APs)} APs from infile_csv {args_global.infile_csv}")
-        for ap in NEW_APs:
-            logger.debug(f"NEW_APs has {ap['AP_NAME']} {ap}")
+    tracer.debug(f"NEW_APs has {len(NEW_APs)} APs from infile_csv {args_global.infile_csv}")
+    for ap in NEW_APs:
+        tracer.debug(f"NEW_APs has {ap['AP_NAME']} {ap}")
 
     if args_global.name is not None and args_global.name != "ALL":
         cli_results['show_ap_summary'] = show_ap(command=f"show ap summary | inc {args_global.name}")
@@ -825,7 +847,7 @@ def main():
         # Convert to list to force execution and wait until ALL are completed
         results = list(iterator)
 
-    if args_global.debug: logger.info(f"ONLINE_APs length is {len(ONLINE_APs)}")
+    if args_global.debug: tracer.info(f"ONLINE_APs length is {len(ONLINE_APs)}")
 
     # only dump if doing ALL AP-s
     if args_global.list and (args_global.name is None or args_global.name == "ALL"):
