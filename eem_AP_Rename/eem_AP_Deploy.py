@@ -82,7 +82,7 @@ no event manager applet eem_AP_Rename
  ! action 300.020.5 cli command "copy tftp://192.168.201.210/eem/eem_AP_Rename_new.py bootflash:/guest-share/" pattern "]"
  ! action 300.020.6 cli command "" pattern "[confirm]"
  ! action 300.020.7 cli command "y"
- action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename_new.py -n $find_ap_name -l -h"
+ action 300.070.1 cli command "guestshell run python3 /flash/guest-share/eem_AP_Rename_new.py -n $find_ap_name -l -H"
  action 900.999.9 syslog msg "Finished"
 !
 end
@@ -438,35 +438,37 @@ def get_speed_duplex(chk_ap=None):
             cli_ap['AP_CDP_SWITCH_PORT_LOCAL']  = None
             cli_ap['AP_CDP_SWITCH_PORT_SPEED']  = None
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = None
-            if args_global.debug:
-                tracer.debug(f"match_ap {match_ap['AP_NAME']}"
-                            f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
-                            f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
-            # check to see if this has correct speed max
-            switch_port_speed_max = None
-            if match_ap['AP_CDP_SWITCH_PORT']:
-                if match_ap['AP_CDP_SWITCH_PORT'].startswith('TenGigabitEthernet'): switch_port_speed_max = '10000'
-                if match_ap['AP_CDP_SWITCH_PORT'].startswith('FiveGigabitEthernet'):  switch_port_speed_max = '5000'
-                if match_ap['AP_CDP_SWITCH_PORT'].startswith('TwoGigabitEthernet'):  switch_port_speed_max = '2500'
-                if match_ap['AP_CDP_SWITCH_PORT'].startswith('GigabitEthernet'):  switch_port_speed_max = '1000'
-                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_AP_CDP_SWITCH_PORT_{switch_port_speed_max}"
-            ap_speed_max = None
-            if match_ap['AP_MODEL']:
-                # TODO categorize more AP_MODEL-s
-                if match_ap['AP_MODEL'].startswith('CW917'): ap_speed_max = '10000'
-                if match_ap['AP_MODEL'].startswith('AIR-AP38'):  ap_speed_max = '5000'
-                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_AP_MODEL_{ap_speed_max}"
-            expected_speed = None
-            if switch_port_speed_max and ap_speed_max:
-                expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
-                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_EXPECTED_{expected_speed}"
-            if (expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed
-                or match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] != "Full"):
-                logger.notice(f"{match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
-                              f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']}/{match_ap['AP_CDP_SWITCH_PORT_DUPLEX']} Mbps"
-                              f" expected {expected_speed}/Full Mbps"
-                              f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
-                chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_FIX"
+            tracer.debug(f"match_ap {match_ap['AP_NAME']}"
+                        f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
+                        f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
+
+            # only check speed and duplex based on args
+            if args_global.speed:
+                # check to see if this has correct speed max
+                switch_port_speed_max = None
+                if match_ap['AP_CDP_SWITCH_PORT']:
+                    if match_ap['AP_CDP_SWITCH_PORT'].startswith('TenGigabitEthernet'): switch_port_speed_max = '10000'
+                    if match_ap['AP_CDP_SWITCH_PORT'].startswith('FiveGigabitEthernet'):  switch_port_speed_max = '5000'
+                    if match_ap['AP_CDP_SWITCH_PORT'].startswith('TwoGigabitEthernet'):  switch_port_speed_max = '2500'
+                    if match_ap['AP_CDP_SWITCH_PORT'].startswith('GigabitEthernet'):  switch_port_speed_max = '1000'
+                    chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_AP_CDP_SWITCH_PORT_{switch_port_speed_max}"
+                ap_speed_max = None
+                if match_ap['AP_MODEL']:
+                    # TODO categorize more AP_MODEL-s
+                    if match_ap['AP_MODEL'].startswith('CW917'): ap_speed_max = '10000'
+                    if match_ap['AP_MODEL'].startswith('AIR-AP38'):  ap_speed_max = '5000'
+                    chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_AP_MODEL_{ap_speed_max}"
+                expected_speed = None
+                if switch_port_speed_max and ap_speed_max:
+                    expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
+                    chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_EXPECTED_{expected_speed}"
+                if (expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed
+                    or match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] != "Full"):
+                    logger.notice(f"{match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
+                                  f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']}/{match_ap['AP_CDP_SWITCH_PORT_DUPLEX']} Mbps"
+                                  f" expected {expected_speed}/Full Mbps"
+                                  f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
+                    chk_ap['AP_SPEED_DUPLEX_STEP'] += f"_FIX"
 
     # TODO FIX ALIGNMENT WITH MULTIPLE SWITCHPORT CDP
     chk_ap.pop('AP_SPEED_DUPLEX_STEP')
@@ -736,11 +738,11 @@ def main():
     parser.add_argument('-o', '--outfile_csv', type=str, required=False,
                         default=f"{DEFAULT_OUTFILE}",
                         help=f"specify outfile csv to dump ONLINE_AP list, defaults to {DEFAULT_INFILE}")
-    parser.add_argument('-h', '--harvest', required=False, action='store_true',
+    parser.add_argument('-H', '--harvest', required=False, action='store_true',
                         help=f"harvest the ONLINE_AP in the outfile csv. Only works if -n not used or is ALL")
     parser.add_argument('-n', '--name', type=str, required=False,
                         default=None,
-                        help=f"check only this specific AP name")
+                        help=f"check only this specific AP name. ALL or '' to check all AP names")
     parser.add_argument('-S', '--speed', required=False, action='store_true',
                         help=f"print speed & duplex for each AP")
     parser.add_argument('-a', '--accel', required=False, action='store_true',
@@ -756,10 +758,11 @@ def main():
     args_global, args_unknown = parser.parse_known_args()
 
     if args_global.logfile:
-        # tweak logger
-        logger = configure_guestshell_logging(__name__, trace_log=DEFAULT_TRACEFILE)
+        # tweak logger to add trace_log file
+        logger = configure_guestshell_logging(__name__, trace_log=DEFAULT_TRACEFILE,
+                                              enable_stdout=False, enable_iosxe_syslog=False)
     if args_global.trace:
-        # tweak logger
+        # truely enable logger tracer
         tracer = configure_guestshell_logging(__name__+'_trace', enable_trace=True, trace_log=DEFAULT_TRACEFILE,
                                              enable_stdout=False, enable_iosxe_syslog=False)
 
