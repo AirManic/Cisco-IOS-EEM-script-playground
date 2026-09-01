@@ -40,6 +40,7 @@ import logging.handlers
 from sys import stdout as sys_stdout
 import random
 import string
+import time
 
 RRID = ''.join(random.choices(string.digits, k=5))
 
@@ -198,8 +199,13 @@ def configure_guestshell_logging(logger_name: str = None,
         gs_logger.addHandler(stdout_handler)
 
     if trace_log or (enable_trace and trace_log):
+        max_age_seconds = 60 * 60 * 12
         trace_handler = logging.handlers.TimedRotatingFileHandler(trace_log, when="H", interval=6, backupCount=3)
-        trace_handler.doRollover()
+        # Check if file exists and is older than max_age_seconds
+        if os.path.exists(trace_log):
+            file_age = time.time() - os.path.getmtime(trace_log)
+            if file_age > max_age_seconds:
+                trace_handler.doRollover()
         trace_handler.setFormatter(stdout_formatter)
         gs_logger.addHandler(trace_handler)
 
