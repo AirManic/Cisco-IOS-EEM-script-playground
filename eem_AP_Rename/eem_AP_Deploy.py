@@ -723,7 +723,7 @@ def do_dual_5ghz(chk_ap: object = None) -> None:
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
                 change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
-            if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Disabled":
+            if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "2.4 GHz" and match_ap['AP_DUAL_5GHZ'] == "Disabled":
                 logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
                             f" slot {cli_ap['AP_SLOT']}"
                             f" changing to disable dual-5GHz for existing"
