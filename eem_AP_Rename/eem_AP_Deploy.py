@@ -795,15 +795,6 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
             change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
 
-def process_ap(chk_ap=None):
-    try:
-        get_ap_serial(chk_ap)
-        get_tilt(chk_ap)
-        do_dual_5ghz(chk_ap)
-    except Exception:
-        pass
-
-
 def main():
     global logger
     global tracer
