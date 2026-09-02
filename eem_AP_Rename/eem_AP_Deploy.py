@@ -338,10 +338,10 @@ def get_ap_cdp(chk_ap=None):
         cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
     # clear and start a new objects
     cli_ap = AccessPoint()
-    pattern = defaultdict(lambda: re.compile(rf'~'))
-    pattern['AP_NAME'] = re.compile(rf"^AP Name\s+:\s+(?P<AP_NAME>\S+)")
-    pattern['AP_CDP_SWITCH'] = re.compile(rf"^Device ID\s+:\s+(?P<AP_CDP_SWITCH>\S+)\.")
-    pattern['AP_INTERFACE'] = re.compile(
+    pattern = defaultdict(lambda: pattern_compile(rf'~'))
+    pattern['AP_NAME'] = pattern_compile(rf"^AP Name\s+:\s+(?P<AP_NAME>\S+)")
+    pattern['AP_CDP_SWITCH'] = pattern_compile(rf"^Device ID\s+:\s+(?P<AP_CDP_SWITCH>\S+)\.")
+    pattern['AP_INTERFACE'] = pattern_compile(
         rf"^Interface\s+:\s+(?P<AP_CDP_SWITCH_PORT_LOCAL>\S+),.*:\s+(?P<AP_CDP_SWITCH_PORT>\S+)")
     cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_cdp_neighbor'].splitlines():
@@ -400,8 +400,8 @@ def get_ap_serial(chk_ap: AccessPoint = None) -> None:
     cli_results['show_ap_inventory'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} inventory")
     # clear and start a new cli_ap object
     cli_ap = AccessPoint()
-    pattern = defaultdict(lambda: re.compile(rf'~'))
-    pattern['AP_SERIAL'] = re.compile(rf"^PID:.*SN:\s+(?P<AP_SERIAL>\S+)")
+    pattern = defaultdict(lambda: pattern_compile(rf'~'))
+    pattern['AP_SERIAL'] = pattern_compile(rf"^PID:.*SN:\s+(?P<AP_SERIAL>\S+)")
     cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_inventory'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
@@ -426,8 +426,8 @@ def get_tilt(chk_ap: AccessPoint = None) -> None:
     cli_results['show_ap_accelerometer'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} accelerometer")
     # clear and start a new cli_ap object
     cli_ap = AccessPoint()
-    pattern = defaultdict(lambda: re.compile(rf'~'))
-    pattern['AP_TILT'] = re.compile(rf"^Tilt angle\s+:\s+(?P<AP_TILT>.*)")
+    pattern = defaultdict(lambda: pattern_compile(rf'~'))
+    pattern['AP_TILT'] = pattern_compile(rf"^Tilt angle\s+:\s+(?P<AP_TILT>.*)")
     cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_accelerometer'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
@@ -448,9 +448,9 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
     # clear and start a new objects
     cli_ap = AccessPoint()
     cli_ap['AP_SPEED_DUPLEX_STEP'] = f"AP_SPEED_DUPLEX_STEP"
-    pattern = defaultdict(lambda: re.compile(rf'~'))
-    pattern['AP_NAME'] = re.compile(rf"^(?:AP Name\s+:|Ethernet Stats for AP)\s+(?P<AP_NAME>\S+)")
-    pattern['AP_SPEED_DUPLEX'] = re.compile(
+    pattern = defaultdict(lambda: pattern_compile(rf'~'))
+    pattern['AP_NAME'] = pattern_compile(rf"^(?:AP Name\s+:|Ethernet Stats for AP)\s+(?P<AP_NAME>\S+)")
+    pattern['AP_SPEED_DUPLEX'] = pattern_compile(
         rf"^(?P<AP_CDP_SWITCH_PORT_LOCAL>GigabitEthernet\d)\s+(UP)\s+(?P<AP_CDP_SWITCH_PORT_SPEED>\d+)\s+(Mbps)\s+(?P<AP_CDP_SWITCH_PORT_DUPLEX>\S+)")
     cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_ether_stats'].splitlines():
@@ -466,7 +466,7 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
             cli_ap['AP_CDP_SWITCH_PORT_SPEED'] = cli_match['AP_SPEED_DUPLEX'].group('AP_CDP_SWITCH_PORT_SPEED')
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = cli_match['AP_SPEED_DUPLEX'].group('AP_CDP_SWITCH_PORT_DUPLEX')
             # lazy match search to only first _MATCH text
-            pattern['AP_SPEED_DUPLEX_STEP'] = re.compile(rf"^(?P<PREFIX>.*?_MATCH)")
+            pattern['AP_SPEED_DUPLEX_STEP'] = pattern_compile(rf"^(?P<PREFIX>.*?_MATCH)")
             starts_with = re.search(pattern['AP_SPEED_DUPLEX_STEP'], cli_ap['AP_SPEED_DUPLEX_STEP'])
             if starts_with: cli_ap['AP_SPEED_DUPLEX_STEP'] = starts_with.group('PREFIX')
             cli_ap['AP_SPEED_DUPLEX_STEP'] += (f"_SPEED_DUPLEX"
@@ -510,7 +510,7 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
             cli_ap['AP_CDP_SWITCH_PORT_SPEED'] = None
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = None
             # lazy match search to only first _MATCH text
-            pattern['AP_SPEED_DUPLEX_STEP'] = re.compile(rf"^(?P<PREFIX>.*?_MATCH)")
+            pattern['AP_SPEED_DUPLEX_STEP'] = pattern_compile(rf"^(?P<PREFIX>.*?_MATCH)")
             starts_with = re.search(pattern['AP_SPEED_DUPLEX_STEP'], cli_ap['AP_SPEED_DUPLEX_STEP'])
             if starts_with: cli_ap['AP_SPEED_DUPLEX_STEP'] = starts_with.group('PREFIX')
 
@@ -608,11 +608,11 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         # Check Slot 1 first
         # clear and start a new objects
         cli_ap = AccessPoint()
-        pattern = defaultdict(lambda: re.compile('~'))
-        pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
-        pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (?P<AP_SLOT>1)")
-        pattern['AP_SLOT_DUAL_ROLE'] = re.compile(rf"^\s+Dual Radio Mode\s+:\s+(?P<AP_SLOT_DUAL_ROLE>.*)")
-        pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>.*)")
+        pattern = defaultdict(lambda: pattern_compile('~'))
+        pattern['AP_NAME'] = pattern_compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
+        pattern['AP_SLOT'] = pattern_compile(rf"^Attributes for Slot (?P<AP_SLOT>1)")
+        pattern['AP_SLOT_DUAL_ROLE'] = pattern_compile(rf"^\s+Dual Radio Mode\s+:\s+(?P<AP_SLOT_DUAL_ROLE>.*)")
+        pattern['AP_SLOT_ADMIN'] = pattern_compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>.*)")
         cli_match = defaultdict(lambda: re.search(pattern['NULL'], 'NEVER'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
@@ -680,10 +680,10 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         # Now check Slot 2
         # clear and start a new objects
         cli_ap = AccessPoint()
-        pattern = defaultdict(lambda: re.compile(rf'~'))
-        pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
-        pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (?P<AP_SLOT>2)")
-        pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>\S+)")
+        pattern = defaultdict(lambda: pattern_compile(rf'~'))
+        pattern['AP_NAME'] = pattern_compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
+        pattern['AP_SLOT'] = pattern_compile(rf"^Attributes for Slot (?P<AP_SLOT>2)")
+        pattern['AP_SLOT_ADMIN'] = pattern_compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>\S+)")
         cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
@@ -730,13 +730,13 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         # assume we have a longer summary, as this will work for short or long output then
         # clear and start a new objects
         cli_ap = AccessPoint()
-        pattern = defaultdict(lambda: re.compile(rf'~'))
-        pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
-        pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (?P<AP_SLOT>0)")
-        pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(?P<AP_SLOT_ROLE>.*)")
-        pattern['AP_SLOT_METHOD'] = re.compile(rf"^\s+Assignment Method\s+:\s+(?P<AP_SLOT_METHOD>.*)")
-        pattern['AP_SLOT_BAND'] = re.compile(rf"^\s+Band\s+:\s+(?P<AP_SLOT_BAND>\S+\s+GHz)")
-        pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>.*)")
+        pattern = defaultdict(lambda: pattern_compile(rf'~'))
+        pattern['AP_NAME'] = pattern_compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
+        pattern['AP_SLOT'] = pattern_compile(rf"^Attributes for Slot (?P<AP_SLOT>0)")
+        pattern['AP_SLOT_ROLE'] = pattern_compile(rf"^\s+Radio Role\s+:\s+(?P<AP_SLOT_ROLE>.*)")
+        pattern['AP_SLOT_METHOD'] = pattern_compile(rf"^\s+Assignment Method\s+:\s+(?P<AP_SLOT_METHOD>.*)")
+        pattern['AP_SLOT_BAND'] = pattern_compile(rf"^\s+Band\s+:\s+(?P<AP_SLOT_BAND>\S+\s+GHz)")
+        pattern['AP_SLOT_ADMIN'] = pattern_compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>.*)")
         cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
@@ -881,8 +881,8 @@ def main():
         cli_results['show_ap_summary'] = fetch_file(file=SIM_FILE_EEM_AP_SUMM)
 
     # build list of online AP from show ap summary
-    pattern = defaultdict(lambda: re.compile(rf'~'))
-    pattern['AP_SUMMARY'] = re.compile(
+    pattern = defaultdict(lambda: pattern_compile(rf'~'))
+    pattern['AP_SUMMARY'] = pattern_compile(
         rf"^(?P<AP_NAME>\S+)\s+(?P<AP_NUM_SLOTS>\S+)\s+(?P<AP_MODEL>\S+)\s+(?P<AP_MAC_ENET>\S+)\s+(?P<AP_MAC_RADIO>\S+)\s+(?P<AP_CC>\S+)\s+(?P<AP_RD>\S+)\s+(?P<AP_IP>\S+)\s+(?P<AP_STATE>Registered)\s+(?P<AP_LOCATION>.*)")
     cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_summary'].splitlines():
