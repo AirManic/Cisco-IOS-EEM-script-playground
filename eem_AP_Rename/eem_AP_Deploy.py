@@ -117,7 +117,7 @@ import concurrent.futures
 my_name: str = os.path.basename(sys.argv[0])
 
 # determine if running under IOS-XE guestshell
-is_guestshell: bool = os.uname().nodename == 'guestshell'
+is_guestshell = os.uname().nodename == 'guestshell'
 
 DEFAULT_INFILE = "/flash/guest-share/" + Path(my_name).stem + '.csv'
 DEFAULT_OUTFILE = "/flash/guest-share/" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
@@ -129,16 +129,28 @@ else:
     # if not running in guestshell create placeholder functions so we can exercise the code for development work
     def cli(command: str):
         return ''
+
+
     def clip(command):
         return ''
+
+
     def configure(configuration: Union[str, list]):
         return []
+
+
     def configurep(configuration: Union[str, list]):
         return []
+
+
     def execute(command: str):
         return ''
+
+
     def executep(command: str):
         return ''
+
+
     DEFAULT_INFILE = "./experimental/exp_" + Path(my_name).stem + '.csv'
     DEFAULT_OUTFILE = "./experimental/exp_" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
     DEFAULT_TRACEFILE = "./experimental/exp_" + Path(my_name).stem + '_tracer.txt'
@@ -153,7 +165,7 @@ else:
 # main logger
 logger = configure_guestshell_logging(__name__)
 # create dummy logger for trace
-tracer = gs_logger = logging.getLogger(__name__+'_trace')
+tracer = gs_logger = logging.getLogger(__name__ + '_trace')
 tracer.addHandler(logging.NullHandler())
 
 args_global = argparse.Namespace()
@@ -161,7 +173,8 @@ args_global = argparse.Namespace()
 ONLINE_APs = []
 NEW_APs = []
 
-def show_ap(command:Union[str,list]=None) -> str:
+
+def show_ap(command: Union[str, list] = None) -> str:
     """
     Issues one or more [if command is a list] commands to the CLI and returns the results
 
@@ -181,7 +194,15 @@ def show_ap(command:Union[str,list]=None) -> str:
     results = cli(command)
     return results
 
-def change_ap(command:Union[str,list]=None):
+
+def change_ap(command: Union[str, list] = None) -> str:
+    """
+
+    :type command: Union[str, list]
+    :rtype: str
+    :param command:
+    :return:
+    """
     command_loop = [f"enable"]
     if type(command) is str:
         command_loop.append(f"{command}")
@@ -197,7 +218,8 @@ def change_ap(command:Union[str,list]=None):
     results = cli(command)
     return results
 
-def fetch_file(file:str=None):
+
+def fetch_file(file: str = None):
     results = ''
     if Path(file).is_file():
         with open(file) as f:
@@ -206,9 +228,10 @@ def fetch_file(file:str=None):
         print(f"{file} not found.")
     return results
 
+
 class AccessPoint(defaultdict):
 
-    def __init__(self, default_factory=str,  *args, **kwargs):
+    def __init__(self, default_factory=str, *args, **kwargs):
         super().__init__(default_factory, *args, **kwargs)
 
     def __getitem__(self, key):
@@ -229,10 +252,10 @@ class AccessPoint(defaultdict):
 
     def __setitem__(self, key, value):
         new_value = value
-        if isinstance(value,str): new_value = value.strip()
+        if isinstance(value, str): new_value = value.strip()
         super().__setitem__(key, new_value)
 
-    def match_ap_criteria(self, criteria:list=None, ap=None):
+    def match_ap_criteria(self, criteria: list = None, ap=None):
         criteria_loop = []
         if type(criteria) is str:
             criteria_loop.append(criteria)
@@ -257,9 +280,9 @@ class AccessPoint(defaultdict):
             # both AP-s being compared must have valid criteria to check, else fullmatch will error
             elif this_criteria_ap and this_criteria_self:
                 # now check it for a match, where anything that does not match will make it go False
-                match_ap = match_ap and ( not this_criteria_ap
-                                          or ( ap[aspect]
-                                               and re.fullmatch(rf"{ap[aspect]}", self[aspect]) is not None ) )
+                match_ap = match_ap and (not this_criteria_ap
+                                         or (ap[aspect]
+                                             and re.fullmatch(rf"{ap[aspect]}", self[aspect]) is not None))
             if not match_ap or miss_match_ap:
                 # no need to keep looking, so break the loop checking more aspect
                 break
@@ -269,7 +292,7 @@ class AccessPoint(defaultdict):
             ap_return = ap
         return ap_return
 
-    def matching_ap(self, criteria:list=None, ap_list:list=None):
+    def matching_ap(self, criteria: list = None, ap_list: list = None):
         # self is expected to be reference to find, and ap might/might not exist but has the key criteria
         ap_loop = []
         if type(ap_list) is str:
@@ -281,9 +304,10 @@ class AccessPoint(defaultdict):
             criteria_loop.append(criteria)
         if type(criteria) is list:
             criteria_loop = criteria_loop + criteria
-        match_ap = next( (ap for ap in ap_loop if
-                         self.match_ap_criteria(criteria=criteria_loop, ap=ap) ), None )
+        match_ap = next((ap for ap in ap_loop if
+                         self.match_ap_criteria(criteria=criteria_loop, ap=ap)), None)
         return match_ap
+
 
 def get_ap_cdp(chk_ap=None):
     if chk_ap is None: return
@@ -296,18 +320,20 @@ def get_ap_cdp(chk_ap=None):
         start_time = time.time()
         if is_guestshell:
             while len(cli_results['show_cdp_neighbor']) < 10 and time.time() - start_time < wait_time:
-                cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
+                cli_results['show_cdp_neighbor'] = show_ap(
+                    command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
         logger.info(f"{args_global.name} got CDP information after {(time.time() - start_time):.3f} seconds")
     cli_results['show_cdp_neighbor'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} cdp neighbor detail")
     if not is_guestshell:
         cli_results['show_cdp_neighbor'] = fetch_file(file=SIM_FILE_EEM_AP_CDP_DETAIL)
     # clear and start a new objects
     cli_ap = AccessPoint()
-    pattern = defaultdict(lambda : re.compile(rf'~'))
-    pattern['AP_NAME'] =        re.compile(rf"^AP Name\s+:\s+(?P<AP_NAME>\S+)")
-    pattern['AP_CDP_SWITCH'] =    re.compile(rf"^Device ID\s+:\s+(?P<AP_CDP_SWITCH>\S+)\.")
-    pattern['AP_INTERFACE'] =   re.compile(rf"^Interface\s+:\s+(?P<AP_CDP_SWITCH_PORT_LOCAL>\S+),.*:\s+(?P<AP_CDP_SWITCH_PORT>\S+)")
-    cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+    pattern = defaultdict(lambda: re.compile(rf'~'))
+    pattern['AP_NAME'] = re.compile(rf"^AP Name\s+:\s+(?P<AP_NAME>\S+)")
+    pattern['AP_CDP_SWITCH'] = re.compile(rf"^Device ID\s+:\s+(?P<AP_CDP_SWITCH>\S+)\.")
+    pattern['AP_INTERFACE'] = re.compile(
+        rf"^Interface\s+:\s+(?P<AP_CDP_SWITCH_PORT_LOCAL>\S+),.*:\s+(?P<AP_CDP_SWITCH_PORT>\S+)")
+    cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_cdp_neighbor'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_NAME']:
@@ -342,11 +368,12 @@ def get_ap_cdp(chk_ap=None):
                     # create a new object for checking and potentially appending
                     match_ap = copy.deepcopy(chk_ap)
                     ONLINE_APs.append(match_ap)
-            match_ap['AP_CDP_SWITCH']            = cli_ap['AP_CDP_SWITCH']
-            match_ap['AP_CDP_SWITCH_PORT']       = cli_ap['AP_CDP_SWITCH_PORT']
+            match_ap['AP_CDP_SWITCH'] = cli_ap['AP_CDP_SWITCH']
+            match_ap['AP_CDP_SWITCH_PORT'] = cli_ap['AP_CDP_SWITCH_PORT']
             match_ap['AP_CDP_SWITCH_PORT_LOCAL'] = cli_ap['AP_CDP_SWITCH_PORT_LOCAL']
             # clear and start a new cli_ap object
             cli_ap = AccessPoint()
+
 
 def get_ap_serial(chk_ap: AccessPoint = None) -> None:
     """
@@ -363,15 +390,16 @@ def get_ap_serial(chk_ap: AccessPoint = None) -> None:
     cli_results['show_ap_inventory'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} inventory")
     # clear and start a new cli_ap object
     cli_ap = AccessPoint()
-    pattern = defaultdict(lambda : re.compile(rf'~'))
+    pattern = defaultdict(lambda: re.compile(rf'~'))
     pattern['AP_SERIAL'] = re.compile(rf"^PID:.*SN:\s+(?P<AP_SERIAL>\S+)")
-    cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+    cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_inventory'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_SERIAL']:
             chk_ap['AP_SERIAL'] = cli_match['AP_SERIAL'].group('AP_SERIAL')
     tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                                      f" is {chk_ap['AP_SERIAL']}")
+                 f" is {chk_ap['AP_SERIAL']}")
+
 
 def get_tilt(chk_ap: AccessPoint = None) -> None:
     """
@@ -388,14 +416,15 @@ def get_tilt(chk_ap: AccessPoint = None) -> None:
     cli_results['show_ap_accelerometer'] = show_ap(command=f"show ap name {chk_ap['AP_NAME']} accelerometer")
     # clear and start a new cli_ap object
     cli_ap = AccessPoint()
-    pattern = defaultdict(lambda : re.compile(rf'~'))
+    pattern = defaultdict(lambda: re.compile(rf'~'))
     pattern['AP_TILT'] = re.compile(rf"^Tilt angle\s+:\s+(?P<AP_TILT>.*)")
-    cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+    cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_accelerometer'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_TILT']:
             chk_ap['AP_TILT'] = cli_match['AP_TILT'].group('AP_TILT')
     if args_global.accel: logger.info(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
+
 
 def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
     if chk_ap is None: return
@@ -409,10 +438,11 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
     # clear and start a new objects
     cli_ap = AccessPoint()
     cli_ap['AP_SPEED_DUPLEX_STEP'] = f"AP_SPEED_DUPLEX_STEP"
-    pattern = defaultdict(lambda : re.compile(rf'~'))
-    pattern['AP_NAME'] =            re.compile(rf"^(?:AP Name\s+:|Ethernet Stats for AP)\s+(?P<AP_NAME>\S+)")
-    pattern['AP_SPEED_DUPLEX'] =    re.compile(rf"^(?P<AP_CDP_SWITCH_PORT_LOCAL>GigabitEthernet\d)\s+(UP)\s+(?P<AP_CDP_SWITCH_PORT_SPEED>\d+)\s+(Mbps)\s+(?P<AP_CDP_SWITCH_PORT_DUPLEX>\S+)")
-    cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+    pattern = defaultdict(lambda: re.compile(rf'~'))
+    pattern['AP_NAME'] = re.compile(rf"^(?:AP Name\s+:|Ethernet Stats for AP)\s+(?P<AP_NAME>\S+)")
+    pattern['AP_SPEED_DUPLEX'] = re.compile(
+        rf"^(?P<AP_CDP_SWITCH_PORT_LOCAL>GigabitEthernet\d)\s+(UP)\s+(?P<AP_CDP_SWITCH_PORT_SPEED>\d+)\s+(Mbps)\s+(?P<AP_CDP_SWITCH_PORT_DUPLEX>\S+)")
+    cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_ether_stats'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_NAME']:
@@ -455,19 +485,19 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
                 if match_ap is None:
                     # create a new object for checking and potentially appending
                     match_ap = copy.deepcopy(chk_ap)
-                    match_ap['AP_CDP_SWITCH']            = None
-                    match_ap['AP_CDP_SWITCH_PORT']       = None
+                    match_ap['AP_CDP_SWITCH'] = None
+                    match_ap['AP_CDP_SWITCH_PORT'] = None
                     ONLINE_APs.append(match_ap)
                     cli_ap['AP_SPEED_DUPLEX_STEP'] += f"_APPEND"
 
             # now set the items ..
-            match_ap['AP_CDP_SWITCH_PORT_LOCAL']  = cli_ap['AP_CDP_SWITCH_PORT_LOCAL']
-            match_ap['AP_CDP_SWITCH_PORT_SPEED']  = cli_ap['AP_CDP_SWITCH_PORT_SPEED']
+            match_ap['AP_CDP_SWITCH_PORT_LOCAL'] = cli_ap['AP_CDP_SWITCH_PORT_LOCAL']
+            match_ap['AP_CDP_SWITCH_PORT_SPEED'] = cli_ap['AP_CDP_SWITCH_PORT_SPEED']
             match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = cli_ap['AP_CDP_SWITCH_PORT_DUPLEX']
             match_ap['AP_SPEED_DUPLEX_STEP'] = cli_ap['AP_SPEED_DUPLEX_STEP']
             # clear the cli_ap speed/duplex aspects to look for another interface match
-            cli_ap['AP_CDP_SWITCH_PORT_LOCAL']  = None
-            cli_ap['AP_CDP_SWITCH_PORT_SPEED']  = None
+            cli_ap['AP_CDP_SWITCH_PORT_LOCAL'] = None
+            cli_ap['AP_CDP_SWITCH_PORT_SPEED'] = None
             cli_ap['AP_CDP_SWITCH_PORT_DUPLEX'] = None
             # lazy match search to only first _MATCH text
             pattern['AP_SPEED_DUPLEX_STEP'] = re.compile(rf"^(?P<PREFIX>.*?_MATCH)")
@@ -475,8 +505,8 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
             if starts_with: cli_ap['AP_SPEED_DUPLEX_STEP'] = starts_with.group('PREFIX')
 
             tracer.debug(f"match_ap {match_ap['AP_NAME']}"
-                        f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
-                        f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
+                         f" using {match_ap['AP_CDP_SWITCH_PORT_LOCAL']}"
+                         f" HIT on {match_ap['AP_CDP_SWITCH_PORT_SPEED']} / {match_ap['AP_CDP_SWITCH_PORT_DUPLEX']}")
 
             # only check speed and duplex based on args
             if args_global.speed:
@@ -498,14 +528,15 @@ def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
                 if switch_port_speed_max and ap_speed_max:
                     expected_speed = str(min(int(switch_port_speed_max), int(ap_speed_max)))
                     cli_ap['AP_SPEED_DUPLEX_STEP'] += f"_EXPECTED_{expected_speed}"
-                if ( (expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED']
-                      and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed)
-                    or match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] != "Full"):
+                if ((expected_speed and match_ap['AP_CDP_SWITCH_PORT_SPEED']
+                     and match_ap['AP_CDP_SWITCH_PORT_SPEED'] != expected_speed)
+                        or match_ap['AP_CDP_SWITCH_PORT_DUPLEX'] != "Full"):
                     logger.notice(f"{match_ap['AP_NAME']} {match_ap['AP_MODEL']}"
                                   f" check {match_ap['AP_CDP_SWITCH_PORT_SPEED']}/{match_ap['AP_CDP_SWITCH_PORT_DUPLEX']} Mbps"
                                   f" expected {expected_speed}/Full Mbps"
                                   f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
                     cli_ap['AP_SPEED_DUPLEX_STEP'] += f"_FIX"
+
 
 def do_ap_rename(chk_ap: AccessPoint = None) -> None:
     global ONLINE_APs
@@ -521,8 +552,10 @@ def do_ap_rename(chk_ap: AccessPoint = None) -> None:
     if match_ap:
         tracer.debug(f"chk_ap {chk_ap} in as NEW_APs {match_ap}")
         if match_ap['AP_NAME'] != chk_ap['AP_NAME']:
-            logger.info(f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
+            logger.info(
+                f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} name {match_ap['AP_NAME']}")
+
 
 def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
     if chk_ap is None: return
@@ -532,13 +565,14 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
     cli_results['show_ap_config_slot'] = ""
     for i in range(0, 4):
         cli_results['show_ap_config_slot'] = (cli_results['show_ap_config_slot']
-                    + show_ap(command=f"show ap name {chk_ap['AP_NAME']} config slot {i}"))
+                                              + show_ap(command=f"show ap name {chk_ap['AP_NAME']} config slot {i}"))
     if not is_guestshell:
         cli_results['show_ap_config_slot'] = fetch_file(file=SIM_FILE_EEM_AP_CONFIG_SLOT)
 
     # First look for a full match of all the criteria that is present
     # only look for AP-s HAVE BEEN named/renamed correctly.. so include AP_NAME
-    criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH', 'AP_CDP_SWITCH_PORT']
+    criteria = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO', 'AP_CDP_SWITCH',
+                'AP_CDP_SWITCH_PORT']
     tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']} "
                  f"matching in NEW_APs criteria {criteria} {chk_ap} ")
     match_ap = chk_ap.matching_ap(criteria=criteria, ap_list=NEW_APs)
@@ -558,7 +592,6 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         chk_ap['AP_DUAL_5GHZ'] = f"NA"
         chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9179F"
 
-
     if chk_ap['AP_MODEL'] in ['CW9178I']:
         chk_ap['AP_DUAL_5GHZ_STEP'] = f"CW9178I"
         # assume we have a longer summary, as this will work for short or long output then
@@ -570,7 +603,7 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (?P<AP_SLOT>1)")
         pattern['AP_SLOT_DUAL_ROLE'] = re.compile(rf"^\s+Dual Radio Mode\s+:\s+(?P<AP_SLOT_DUAL_ROLE>.*)")
         pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>.*)")
-        cli_match = defaultdict(lambda: re.search(pattern['NULL'],'NEVER'))
+        cli_match = defaultdict(lambda: re.search(pattern['NULL'], 'NEVER'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
             if cli_match['AP_NAME']:
@@ -594,7 +627,6 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
                 cli_ap['AP_SLOT_ADMIN'] = cli_match['AP_SLOT_ADMIN'].group('AP_SLOT_ADMIN')
                 chk_ap['AP_DUAL_5GHZ_STEP'] += f"_ADMIN"
 
-
             cli_match['HIT'] = (cli_ap['AP_NAME']
                                 and cli_ap['AP_SLOT']
                                 and cli_ap['AP_SLOT_DUAL_ROLE']
@@ -602,13 +634,14 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
 
             if cli_match['HIT']:
                 tracer.debug(f"match_ap {match_ap['AP_NAME']}"
-                            f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
-                            f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
+                             f" {match_ap['AP_MODEL']} Slot {match_ap['AP_SLOT']}"
+                             f" HIT as mode {match_ap['AP_SLOT_DUAL_ROLE']} / admin {match_ap['AP_SLOT_ADMIN']}")
 
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
                 # update chk_ap
-                chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} dual_radio {cli_ap['AP_SLOT_DUAL_ROLE']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                chk_ap[
+                    'AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} dual_radio {cli_ap['AP_SLOT_DUAL_ROLE']} admin {cli_ap['AP_SLOT_ADMIN']}"
                 break
 
         if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
@@ -637,11 +670,11 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         # Now check Slot 2
         # clear and start a new objects
         cli_ap = AccessPoint()
-        pattern = defaultdict(lambda : re.compile(rf'~'))
+        pattern = defaultdict(lambda: re.compile(rf'~'))
         pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
         pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (?P<AP_SLOT>2)")
         pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>\S+)")
-        cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+        cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
             if cli_match['AP_NAME']:
@@ -666,8 +699,8 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
                                 and cli_ap['AP_SLOT_ADMIN'])
             if cli_match['HIT']:
                 tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                            f" slot {cli_ap['AP_SLOT']}"
-                            f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
+                             f" slot {cli_ap['AP_SLOT']}"
+                             f" HIT admin {cli_ap['AP_SLOT_ADMIN']}")
 
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
@@ -687,14 +720,14 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
         # assume we have a longer summary, as this will work for short or long output then
         # clear and start a new objects
         cli_ap = AccessPoint()
-        pattern = defaultdict(lambda : re.compile(rf'~'))
+        pattern = defaultdict(lambda: re.compile(rf'~'))
         pattern['AP_NAME'] = re.compile(rf"^Cisco AP Name\s+:\s+(?P<AP_NAME>\S+)")
         pattern['AP_SLOT'] = re.compile(rf"^Attributes for Slot (?P<AP_SLOT>0)")
         pattern['AP_SLOT_ROLE'] = re.compile(rf"^\s+Radio Role\s+:\s+(?P<AP_SLOT_ROLE>.*)")
         pattern['AP_SLOT_METHOD'] = re.compile(rf"^\s+Assignment Method\s+:\s+(?P<AP_SLOT_METHOD>.*)")
         pattern['AP_SLOT_BAND'] = re.compile(rf"^\s+Band\s+:\s+(?P<AP_SLOT_BAND>\S+\s+GHz)")
         pattern['AP_SLOT_ADMIN'] = re.compile(rf"^\s+Administrative State\s+:\s+(?P<AP_SLOT_ADMIN>.*)")
-        cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+        cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
         for line in cli_results['show_ap_config_slot'].splitlines():
             for p in pattern: cli_match[p] = re.search(pattern[p], line)
             if cli_match['AP_NAME']:
@@ -703,11 +736,11 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
                     cli_ap['AP_NAME'] = cli_match['AP_NAME'].group('AP_NAME')
                     chk_ap['AP_DUAL_5GHZ_STEP'] += f"_AP_NAME_MATCH"
             if (cli_ap['AP_NAME']
-                and cli_ap['AP_SLOT'] is None and cli_match['AP_SLOT']):
+                    and cli_ap['AP_SLOT'] is None and cli_match['AP_SLOT']):
                 cli_ap['AP_SLOT'] = cli_match['AP_SLOT'].group('AP_SLOT')
                 chk_ap['AP_DUAL_5GHZ_STEP'] += f"_AP_SLOT{cli_ap['AP_SLOT']}"
             if (cli_ap['AP_NAME']
-                and cli_ap['AP_SLOT_ROLE'] is None and cli_match['AP_SLOT_ROLE']):
+                    and cli_ap['AP_SLOT_ROLE'] is None and cli_match['AP_SLOT_ROLE']):
                 cli_ap['AP_SLOT_ROLE'] = cli_match['AP_SLOT_ROLE'].group('AP_SLOT_ROLE')
                 chk_ap['AP_DUAL_5GHZ_STEP'] += f"_ROLE"
             if (cli_ap['AP_NAME']
@@ -737,7 +770,8 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
                 # update chk_ap
-                chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']} admin {cli_ap['AP_SLOT_ADMIN']}"
+                chk_ap[
+                    'AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']} admin {cli_ap['AP_SLOT_ADMIN']}"
                 break
 
         if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
@@ -752,13 +786,14 @@ def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
 
         if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "2.4 GHz" and match_ap['AP_DUAL_5GHZ'] == "Disabled":
             logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                f" slot {cli_ap['AP_SLOT']}"
-                f" changing to disable dual-5GHz for existing"
-                f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                        f" slot {cli_ap['AP_SLOT']}"
+                        f" changing to disable dual-5GHz for existing"
+                        f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 24ghz")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
+
 
 def process_ap(chk_ap=None):
     try:
@@ -767,6 +802,7 @@ def process_ap(chk_ap=None):
         do_dual_5ghz(chk_ap)
     except Exception:
         pass
+
 
 def main():
     global logger
@@ -811,8 +847,8 @@ def main():
                                               enable_stdout=False, enable_iosxe_syslog=False)
     if args_global.tracer:
         # truely enable logger tracer
-        tracer = configure_guestshell_logging(__name__+'_trace', enable_trace=True, trace_log=DEFAULT_TRACEFILE,
-                                             enable_stdout=False, enable_iosxe_syslog=False)
+        tracer = configure_guestshell_logging(__name__ + '_trace', enable_trace=True, trace_log=DEFAULT_TRACEFILE,
+                                              enable_stdout=False, enable_iosxe_syslog=False)
 
     logger.info(f"Starting ... {sys.argv}")
 
@@ -824,7 +860,8 @@ def main():
             header_line = csvfile.readline()
             raw_headers = next(csv.reader([header_line]))
             cleaned_headers = [h.strip() for h in raw_headers]
-            for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"', restkey='details', restval=None):
+            for ap in csv.DictReader(csvfile, fieldnames=cleaned_headers, delimiter=',', quotechar='"',
+                                     restkey='details', restval=None):
                 append_ap = AccessPoint(**ap)
                 NEW_APs.append(append_ap)
                 tracer.debug(f"infile_csv {args_global.infile_csv} has {append_ap['AP_NAME']} {append_ap}")
@@ -843,9 +880,10 @@ def main():
         cli_results['show_ap_summary'] = fetch_file(file=SIM_FILE_EEM_AP_SUMM)
 
     # build list of online AP from show ap summary
-    pattern = defaultdict(lambda : re.compile(rf'~'))
-    pattern['AP_SUMMARY'] = re.compile(rf"^(?P<AP_NAME>\S+)\s+(?P<AP_NUM_SLOTS>\S+)\s+(?P<AP_MODEL>\S+)\s+(?P<AP_MAC_ENET>\S+)\s+(?P<AP_MAC_RADIO>\S+)\s+(?P<AP_CC>\S+)\s+(?P<AP_RD>\S+)\s+(?P<AP_IP>\S+)\s+(?P<AP_STATE>Registered)\s+(?P<AP_LOCATION>.*)")
-    cli_match = defaultdict(lambda : re.search(pattern['~'],'BLANK'))
+    pattern = defaultdict(lambda: re.compile(rf'~'))
+    pattern['AP_SUMMARY'] = re.compile(
+        rf"^(?P<AP_NAME>\S+)\s+(?P<AP_NUM_SLOTS>\S+)\s+(?P<AP_MODEL>\S+)\s+(?P<AP_MAC_ENET>\S+)\s+(?P<AP_MAC_RADIO>\S+)\s+(?P<AP_CC>\S+)\s+(?P<AP_RD>\S+)\s+(?P<AP_IP>\S+)\s+(?P<AP_STATE>Registered)\s+(?P<AP_LOCATION>.*)")
+    cli_match = defaultdict(lambda: re.search(pattern['~'], 'BLANK'))
     for line in cli_results['show_ap_summary'].splitlines():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_SUMMARY']:
@@ -903,8 +941,8 @@ def main():
         results = list(iterator)
 
     if not args_global.tracer:
-        pop_list = [(key,ap) for key in ['AP_DUAL_5GHZ_STEP', 'AP_SPEED_DUPLEX_STEP'] for ap in ONLINE_APs]
-        for key,ap in pop_list:
+        pop_list = [(key, ap) for key in ['AP_DUAL_5GHZ_STEP', 'AP_SPEED_DUPLEX_STEP'] for ap in ONLINE_APs]
+        for key, ap in pop_list:
             # .. first fetch to make sure exists (else create with None) to avoid pop error
             ap[key] = ap[key]
             ap.pop(key)
