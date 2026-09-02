@@ -106,25 +106,22 @@ import argparse
 import os
 from pathlib import Path
 import sys
-import inspect
 from collections import defaultdict
 from typing import Union
 import re
 import csv
 import time
 import copy
-import random
-import string
 import concurrent.futures
 
-my_name = os.path.basename(sys.argv[0])
+my_name: str = os.path.basename(sys.argv[0])
 
 # determine if running under IOS-XE guestshell
-is_guestshell = os.uname().nodename == 'guestshell'
+is_guestshell: bool = os.uname().nodename == 'guestshell'
 
-DEFAULT_INFILE  = "/flash/guest-share/" + Path(my_name).stem + '.csv'
+DEFAULT_INFILE = "/flash/guest-share/" + Path(my_name).stem + '.csv'
 DEFAULT_OUTFILE = "/flash/guest-share/" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
-DEFAULT_TRACEFILE  = "/flash/guest-share/" + Path(my_name).stem + '_trace.txt'
+DEFAULT_TRACEFILE = "/flash/guest-share/" + Path(my_name).stem + '_trace.txt'
 
 if is_guestshell:
     from cli import cli, clip, configure, configurep, execute, executep
@@ -142,9 +139,10 @@ else:
         return ''
     def executep(command: str):
         return ''
-    DEFAULT_INFILE  = "./experimental/exp_" + Path(my_name).stem + '.csv'
+    DEFAULT_INFILE = "./experimental/exp_" + Path(my_name).stem + '.csv'
     DEFAULT_OUTFILE = "./experimental/exp_" + Path(my_name).stem + '_ONLINE_AP_LIST.csv'
     DEFAULT_TRACEFILE = "./experimental/exp_" + Path(my_name).stem + '_tracer.txt'
+    SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
     SIM_FILE_EEM_AP_SUMM = f"./experimental/exp_eem_AP_summary.txt"
     SIM_FILE_EEM_AP_CDP = f"./experimental/exp_eem_AP_CDP_neighbors.txt"
     SIM_FILE_EEM_AP_ETHER_STATS = f"./experimental/exp_eem_AP_ethernet_stats.txt"
@@ -163,7 +161,14 @@ args_global = argparse.Namespace()
 ONLINE_APs = []
 NEW_APs = []
 
-def show_ap(command:Union[str,list]=None):
+def show_ap(command:Union[str,list]=None) -> str:
+    """
+    Issues one or more [if command is a list] commands to the CLI and returns the results
+
+    :return:
+    :rtype: str
+    :type command: Union[str,list]
+    """
     command_loop = []
     if type(command) is str:
         command_loop.append(command)
@@ -343,7 +348,14 @@ def get_ap_cdp(chk_ap=None):
             # clear and start a new cli_ap object
             cli_ap = AccessPoint()
 
-def get_ap_serial(chk_ap=None):
+def get_ap_serial(chk_ap: AccessPoint = None) -> None:
+    """
+    Gets the serial number for the specific AP
+
+    :type chk_ap: AccessPoint
+    :param chk_ap:
+    :return:
+    """
     if chk_ap is None: return
     global ONLINE_APs
     global NEW_APs
@@ -361,7 +373,14 @@ def get_ap_serial(chk_ap=None):
     tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
                                       f" is {chk_ap['AP_SERIAL']}")
 
-def get_tilt(chk_ap=None):
+def get_tilt(chk_ap: AccessPoint = None) -> None:
+    """
+    Gets the accelerometer tilt angle for the specific AP
+
+    :type chk_ap: AccessPoint
+    :param chk_ap:
+    :return:
+    """
     if chk_ap is None: return
     global ONLINE_APs
     global NEW_APs
@@ -378,7 +397,7 @@ def get_tilt(chk_ap=None):
             chk_ap['AP_TILT'] = cli_match['AP_TILT'].group('AP_TILT')
     if args_global.accel: logger.info(f"chk_ap {chk_ap['AP_MODEL']} {chk_ap['AP_NAME']} is {chk_ap['AP_TILT']}")
 
-def get_speed_duplex(chk_ap=None):
+def get_speed_duplex(chk_ap: AccessPoint = None) -> None:
     if chk_ap is None: return
     global ONLINE_APs
     global NEW_APs
@@ -488,7 +507,7 @@ def get_speed_duplex(chk_ap=None):
                                   f" on {match_ap['AP_CDP_SWITCH']} {match_ap['AP_CDP_SWITCH_PORT']}")
                     cli_ap['AP_SPEED_DUPLEX_STEP'] += f"_FIX"
 
-def do_ap_rename(chk_ap: object = None) -> None:
+def do_ap_rename(chk_ap: AccessPoint = None) -> None:
     global ONLINE_APs
     global NEW_APs
     if chk_ap is None: return
@@ -505,7 +524,7 @@ def do_ap_rename(chk_ap: object = None) -> None:
             logger.info(f"chk_ap {chk_ap['AP_NAME']} renaming NEW_APs match_ap {match_ap['AP_NAME']} for chk_ap {chk_ap}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} name {match_ap['AP_NAME']}")
 
-def do_dual_5ghz(chk_ap: object = None) -> None:
+def do_dual_5ghz(chk_ap: AccessPoint = None) -> None:
     if chk_ap is None: return
     global ONLINE_APs
     global NEW_APs
@@ -595,7 +614,7 @@ def do_dual_5ghz(chk_ap: object = None) -> None:
         if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Enabled" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
             logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
                         f" Slot {chk_ap['AP_SLOT']}"
-                        f" changing to dual_mode for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+                        f" changing to dual_mode enable for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz slot 2 shutdown")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz dual-radio mode enable")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot 2 shutdown")
@@ -606,6 +625,13 @@ def do_dual_5ghz(chk_ap: object = None) -> None:
                         f" changing to dual-5GHz to admin enable per existing"
                         f" dual_mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
             change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 5ghz slot {cli_ap['AP_SLOT']} shutdown")
+
+        if cli_match['HIT'] and cli_ap['AP_SLOT_DUAL_ROLE'] != "Disabled" and match_ap['AP_DUAL_5GHZ'] == "Disabled":
+            logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                        f" Slot {chk_ap['AP_SLOT']}"
+                        f" changing to dual_mode disable for mode {cli_ap['AP_SLOT_DUAL_ROLE']} / admin {cli_ap['AP_SLOT_ADMIN']}")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz slot 2 shutdown")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 5ghz dual-radio mode disable")
 
         # assume we have a longer summary, as this will work for short or long output then
         # Now check Slot 2
