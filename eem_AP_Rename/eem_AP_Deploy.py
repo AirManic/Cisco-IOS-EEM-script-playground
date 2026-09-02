@@ -704,34 +704,35 @@ def do_dual_5ghz(chk_ap: object = None) -> None:
                                 and cli_ap['AP_SLOT_BAND']
                                 and cli_ap['AP_SLOT_ADMIN'])
             if cli_match['HIT']:
-                tracer.debug(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                            f" slot {cli_ap['AP_SLOT']}"
-                            f" has role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+                tracer.debug(f"chk_ap   {chk_ap}")
+                tracer.debug(f"cli_ap   {cli_ap}")
+                tracer.debug(f"match_ap {match_ap}")
+
             # no need to keep looking, so break the loop checking line
             if cli_match['HIT']:
                 # update chk_ap
                 chk_ap['AP_DUAL_5GHZ'] = f"Slot {cli_ap['AP_SLOT']} band {cli_ap['AP_SLOT_BAND']} admin {cli_ap['AP_SLOT_ADMIN']}"
                 break
 
-            if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
-                logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                            f" slot {cli_ap['AP_SLOT']}"
-                            f" changing to enable dual-5GHz for existing"
-                            f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
+        if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "5 GHz" and match_ap['AP_DUAL_5GHZ'] == "Enabled":
+            logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                        f" slot {cli_ap['AP_SLOT']}"
+                        f" changing to enable dual-5GHz for existing"
+                        f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 5ghz")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
-            if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "2.4 GHz" and match_ap['AP_DUAL_5GHZ'] == "Disabled":
-                logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
-                            f" slot {cli_ap['AP_SLOT']}"
-                            f" changing to disable dual-5GHz for existing"
-                            f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 24ghz")
-                change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
+        if cli_match['HIT'] and cli_ap['AP_SLOT_BAND'] != "2.4 GHz" and match_ap['AP_DUAL_5GHZ'] == "Disabled":
+            logger.info(f"chk_ap {chk_ap['AP_NAME']} {chk_ap['AP_MODEL']}"
+                f" slot {cli_ap['AP_SLOT']}"
+                f" changing to disable dual-5GHz for existing"
+                f" role {cli_ap['AP_SLOT_ROLE']} / method {cli_ap['AP_SLOT_METHOD']} / band {cli_ap['AP_SLOT_BAND']}")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band shutdown")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band radio role manual client-serving")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} dot11 dual-band band 24ghz")
+            change_ap(command=f"ap name {chk_ap['AP_NAME']} no dot11 dual-band shutdown")
 
 def process_ap(chk_ap=None):
     try:
