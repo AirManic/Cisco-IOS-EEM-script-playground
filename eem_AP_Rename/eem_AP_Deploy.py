@@ -98,7 +98,7 @@ end
 guestshell enable
 !
 """
-
+import functools
 import logging
 import logging.handlers
 from iosxe_guestshell_logging import configure_guestshell_logging
@@ -172,6 +172,16 @@ args_global = argparse.Namespace()
 
 ONLINE_APs = []
 NEW_APs = []
+
+
+@functools.cache
+def pattern_compile(pattern: re.Pattern.pattern = '') -> re.Pattern[str]:
+    """
+
+    :param pattern:
+    :return:
+    """
+    return re.compile(pattern)
 
 
 def show_ap(command: Union[str, list] = None) -> str:
