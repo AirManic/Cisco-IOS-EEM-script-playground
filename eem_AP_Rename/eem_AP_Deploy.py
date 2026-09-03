@@ -129,24 +129,14 @@ else:
     # if not running in guestshell create placeholder functions so we can exercise the code for development work
     def cli(command: str):
         return ''
-
-
     def clip(command):
         return ''
-
-
     def configure(configuration: Union[str, list]):
         return []
-
-
     def configurep(configuration: Union[str, list]):
         return []
-
-
     def execute(command: str):
         return ''
-
-
     def executep(command: str):
         return ''
 
@@ -847,7 +837,7 @@ def main():
         logger = configure_guestshell_logging(__name__, trace_log=DEFAULT_TRACEFILE,
                                               enable_stdout=False, enable_iosxe_syslog=False)
     if args_global.tracer:
-        # truely enable logger tracer
+        # truly enable logger tracer
         tracer = configure_guestshell_logging(__name__ + '_trace', enable_trace=True, trace_log=DEFAULT_TRACEFILE,
                                               enable_stdout=False, enable_iosxe_syslog=False)
 
@@ -950,7 +940,7 @@ def main():
 
     tracer.info(f"ONLINE_APs length is {len(ONLINE_APs)}")
 
-    # only dump if doing ALL AP-s
+    # only harvest if doing ALL AP-s
     if args_global.harvest and (args_global.name is None or args_global.name == "ALL"):
 
         csv_fields = ['AP_NAME', 'AP_MODEL', 'AP_SERIAL', 'AP_MAC_ENET', 'AP_MAC_RADIO',
