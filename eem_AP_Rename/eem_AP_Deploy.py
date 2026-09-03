@@ -174,8 +174,8 @@ ONLINE_APs = []
 NEW_APs = []
 
 
-@functools.cache
-def pattern_compile(pattern: re.Pattern.pattern = '') -> re.Pattern[str]:
+@functools.lru_cache(maxsize=None)
+def pattern_compile(pattern: str = ''):
     """
 
     :param pattern:
