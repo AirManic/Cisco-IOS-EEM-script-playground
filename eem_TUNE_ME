@@ -138,7 +138,8 @@ no event manager applet TUNE_ME
 
  action 0800           comment Set LED blink
  action 0800.00        cli command "ap name $ap_name led flash start duration $FOLLOW_LED_TIME"
- action 0800.10.3.2.0  syslog msg "[$FOLLOW_MAC] Setting AP flash for $FOLLOW_LED_TIME sec on $ap_name on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0800.10.3.2.0.0  syslog msg "[$FOLLOW_MAC] Setting AP flash for $FOLLOW_LED_TIME sec on $ap_name on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
+ action 0800.10.3.2.0.5  syslog msg "{ FOLLOW_MAC : $FOLLOW_MAC , AP_NAME : $ap_name on $cdp_nei_name $cdp_nei_ip $cdp_nei_port"
  action 0800.10.3.2.1  wait 2
 
 
