@@ -879,11 +879,8 @@ def main():
         for p in pattern: cli_match[p] = re.search(pattern[p], line)
         if cli_match['AP_SUMMARY']:
             online_ap = AccessPoint()
-            online_ap['AP_NAME'] = cli_match['AP_SUMMARY'].group('AP_NAME')
-            online_ap['AP_MODEL'] = cli_match['AP_SUMMARY'].group('AP_MODEL')
-            online_ap['AP_MAC_ENET'] = cli_match['AP_SUMMARY'].group('AP_MAC_ENET')
-            online_ap['AP_MAC_RADIO'] = cli_match['AP_SUMMARY'].group('AP_MAC_RADIO')
-            online_ap['AP_LOCATION'] = cli_match['AP_SUMMARY'].group('AP_LOCATION')
+            for group_name, group_value in cli_match['AP_SUMMARY'].groupdict().items():
+                online_ap[group_name] = group_value
             ONLINE_APs.append(online_ap)
 
     # TODO for now.. run these one after another, as some of them append to the list
