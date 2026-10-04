@@ -50,8 +50,8 @@ conf t
 
 !
 !
-no event manager applet FOLLOW-ME
-   event manager applet FOLLOW-ME
+no event manager applet TUNE_ME
+   event manager applet TUNE_ME
  event tag CRON timer cron cron-entry "*/1 * * * *"
  event tag NONE none sync yes maxrun 30
  trigger
@@ -59,9 +59,9 @@ no event manager applet FOLLOW-ME
  !
  action 0000.00       set FOLLOW_MAC "dead.beef.feed c001.00ff.cafe cafe.babe.face"
  action 0000.09.0     comment To make more responsive than just 1 min, loop and wait in shorter cycles
- action 0000.09.3       set FOLLOW_LOOP_WAIT 10
- action 0000.09.4       set FOLLOW_LOOP_NUMB 5
- action 0000.09.5       set FOLLOW_LED_TIME 10
+ action 0000.09.3       set LOOP_WAIT 10
+ action 0000.09.4       set LOOP_NUMB 5
+ action 0000.09.5       set LED_TIME 10
  action 0000.10       cli command "enable"
  action 0000.20       cli command "term exec prompt timestamp"
  action 0000.30       cli command "term length 0"
@@ -81,18 +81,47 @@ no event manager applet FOLLOW-ME
  action 0000.60.2      cli command "show wireless client mac-address $FOLLOW_MAC detail | inc AP Name|Radio Signal Strength Indicator|Signal to Noise|Current Rate|Protocol"
  action 0000.60.3      set show_output "$_cli_result"
  action 0000.60.4      foreach line "$show_output" "\n"
- action 0000.60.41      regexp "^AP Name:[\s]+([^\r]+)" "$line" match ap_name
+
+
+ action 0000.60.41      regexp "^AP Name:[\s]+([^\r]+)" "$line" match match1
  action 0000.60.42      if $_regexp_result eq "1"
- action 0000.60.43       string trim "$ap_list"
- action 0000.60.44       set ap_list "$_string_result"
- action 0000.60.45       set ap_list "$ap_list $ap_name"
+ action 0000.60.43       string trim "$match1"
+ action 0000.60.44       set match_trim "$_string_result"
+ action 0000.60.45       set ap_list "$ap_list $match_trim"
  action 0000.60.46       string trim "$ap_list"
  action 0000.60.47       set ap_list "$_string_result"
  action 0000.60.49      end  ! if regexp
+
+ action 0000.60.41      regexp "^Radio Signal Strength Indicator:[\s]+([^\r]+)" "$line" match match1
+ action 0000.60.42      if $_regexp_result eq "1"
+ action 0000.60.43       string trim "$match1"
+ action 0000.60.44       set match_trim "$_string_result"
+ action 0000.60.47       set DUT_RSSI "$match_trim"
+ action 0000.60.49      end  ! if regexp
+
+ action 0000.60.41      regexp "^Signal to Noise:[\s]+([^\r]+)" "$line" match DUT_SNR
+ action 0000.60.42      if $_regexp_result eq "1"
+ action 0000.60.43       string trim "$match1"
+ action 0000.60.44       set match_trim "$_string_result"
+ action 0000.60.47       set DUT_SNR "$match_trim"
+ action 0000.60.49      end  ! if regexp
+
+ action 0000.60.41      regexp "^Current Rate:[\s]+([^\r]+)" "$line" match DUT_RATE
+ action 0000.60.42      if $_regexp_result eq "1"
+ action 0000.60.43       string trim "$match1"
+ action 0000.60.44       set match_trim "$_string_result"
+ action 0000.60.47       set DUT_RATE "$match_trim"
+ action 0000.60.49      end  ! if regexp
+
+ action 0000.60.41      regexp "^Protocol:[\s]+([^\r]+)" "$line" match DUT_PROT
+ action 0000.60.42      if $_regexp_result eq "1"
+ action 0000.60.43       string trim "$match1"
+ action 0000.60.44       set match_trim "$_string_result"
+ action 0000.60.47       set DUT_PROT "$match_trim"
+ action 0000.60.49      end  ! if regexp
+
  action 0000.69        end  ! foreach
  action 0000.90       end  ! if event_type
-
-
 
 
  action 0100          comment Iterate across AP list
